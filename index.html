@@ -247,6 +247,12 @@
       </div>
       <button class="search-btn" id="searchBtn" onclick="searchCity()">Search</button>
     </div>
+    <div style="margin-top:6px;display:flex;align-items:center;gap:6px">
+      <label style="display:flex;align-items:center;gap:5px;cursor:pointer;font-size:11px;color:var(--text-secondary)">
+        <input type="checkbox" id="worldwideToggle" style="cursor:pointer">
+        Search worldwide (outside US &amp; Canada)
+      </label>
+    </div>
     <div id="searchResults"></div>
   </div>
 
@@ -543,12 +549,15 @@ async function searchCity() {
   btn.disabled = true; btn.textContent = '…';
   resultsEl.innerHTML = '<div class="search-results"><div class="search-status">Searching…</div></div>';
   try {
-    const url = `https://nominatim.openstreetmap.org/search?q=${encodeURIComponent(query)}&format=json&limit=5&addressdetails=1&countrycodes=us,ca`;
+    const worldwide = document.getElementById('worldwideToggle').checked;
+    const countryFilter = worldwide ? '' : '&countrycodes=us,ca';
+    const url = `https://nominatim.openstreetmap.org/search?q=${encodeURIComponent(query)}&format=json&limit=5&addressdetails=1${countryFilter}`;
     const res = await fetch(url, { headers: { 'Accept-Language': 'en' } });
     if (!res.ok) throw new Error('Geocoding error');
     const results = await res.json();
     if (!results.length) {
-      resultsEl.innerHTML = '<div class="search-results"><div class="search-status">No results found. Try a different spelling or add a state/province.</div></div>';
+      const hint = worldwide ? '' : ' Or check "Search worldwide" for locations outside US & Canada.';
+      resultsEl.innerHTML = `<div class="search-results"><div class="search-status">No results found. Try a different spelling or add a state/province.${hint}</div></div>`;
       return;
     }
     resultsEl.innerHTML = `<div class="search-results">
