@@ -195,6 +195,7 @@
   }
 
   .feedback-row { margin-top: 10px; display: flex; justify-content: flex-end; }
+  .feedback-picker { position: relative; }
   .feedback-btn {
     display: inline-flex; align-items: center; gap: 5px;
     padding: 6px 12px; border-radius: var(--radius-md);
@@ -203,6 +204,21 @@
     text-decoration: none; transition: background 0.15s, color 0.15s;
   }
   .feedback-btn:hover { background: var(--bg-secondary); color: var(--text); }
+  .mail-picker {
+    position: absolute; bottom: calc(100% + 6px); right: 0;
+    background: var(--bg); border: 0.5px solid var(--border-secondary);
+    border-radius: var(--radius-md); overflow: hidden;
+    min-width: 180px; z-index: 100;
+    box-shadow: 0 4px 16px rgba(0,0,0,0.12);
+  }
+  .mail-picker a {
+    display: block; padding: 9px 14px; font-size: 13px;
+    color: var(--text); text-decoration: none;
+    border-bottom: 0.5px solid var(--border); cursor: pointer;
+    transition: background 0.1s;
+  }
+  .mail-picker a:last-child { border-bottom: none; }
+  .mail-picker a:hover { background: var(--bg-secondary); }
 
   .shimmer { background: var(--bg-secondary); border-radius: var(--radius-lg); height: 106px; animation: pulse 1.4s ease-in-out infinite; }
   @keyframes pulse { 0%,100%{opacity:1} 50%{opacity:0.5} }
@@ -401,7 +417,7 @@ function getMilkyWayWindow(date, lat) {
   // Core transits local midnight ~June 15 (DOY 166) — consistent across latitudes
   const CORE_MIDNIGHT_DOY = 166;
   const seasonHalfDays = Math.round(H_hrs * 15);  // ~15 days per hour of HA
-  const firstDOY = CORE_MIDNIGHT_DOY - seasonHalfDays;
+  const firstDOY = CORE_MIDNIGHT_DOY - seasonHalfDays - 3;  // small buffer for pre-dawn visibility
   const lastDOY  = CORE_MIDNIGHT_DOY + seasonHalfDays;
 
   const dayOfYear = Math.floor((date - new Date(date.getFullYear(),0,0)) / 86400000);
@@ -715,22 +731,26 @@ function computeScores(dayDate, locType, forecastData, lat, lon) {
 
   // ── Stars score ──
   // Moon data for this night
-  const moonIllum = SunCalc.getMoonIllumination(new Date(nightStartMs + 2*3600000)); // check at 2hrs after dark
+  // getMoonIllumination is always valid — it's pure math, no lat/lon dependency
+  const moonIllum = SunCalc.getMoonIllumination(new Date(nightStartMs + 2*3600000));
   const moonTimes = SunCalc.getMoonTimes(dayDate, lat, lon);
   const mwInfo    = getMilkyWayWindow(dayDate, lat);
   const moonBadge = moonPhaseBadge(moonIllum);
   const mPenalty  = moonPenalty(moonIllum.fraction);
 
-  // Find moon-free dark window — if moon rises after dark or sets before dawn
+  // Find moon-free dark window
+  // Handle circumpolar moon edge cases (high latitudes)
   let effectiveStarsFrom = starsFrom;
   let effectiveStarsTo   = starsTo;
-  let moonFreeSuffix = '';
 
-  if (moonTimes.rise && moonTimes.rise.getTime() > starsFrom && moonTimes.rise.getTime() < starsTo) {
-    // Moon rises during the night — pre-moonrise window is best
+  if (moonTimes.alwaysUp) {
+    // Moon never sets — no moon-free window at all
+    effectiveStarsTo = effectiveStarsFrom; // zero window
+  } else if (moonTimes.alwaysDown) {
+    // Moon never rises — entire night is moon-free, no change needed
+  } else if (moonTimes.rise && moonTimes.rise.getTime() > starsFrom && moonTimes.rise.getTime() < starsTo) {
     effectiveStarsTo = moonTimes.rise.getTime();
   } else if (moonTimes.set && moonTimes.set.getTime() > starsFrom && moonTimes.set.getTime() < starsTo) {
-    // Moon sets during the night — post-moonset window is best
     effectiveStarsFrom = moonTimes.set.getTime();
   }
 
@@ -967,20 +987,25 @@ function renderDetail(day, locType) {
       ${nightLabel ? `<div class="night-label">📅 ${nightLabel}</div>` : ''}
       ${locTip ? `<div class="tip">${locTip}</div>` : ''}
       <div class="feedback-row">
-        <a class="feedback-btn" href="${buildFeedbackMailto(day, locName, score, label)}" target="_blank">✉ Report what you actually saw</a>
+        <div class="feedback-picker">
+          <button class="feedback-btn" onclick="toggleMailPicker(this, event)">✉ Report what you actually saw ▾</button>
+          <div class="mail-picker" id="mailPicker" style="display:none">
+            <a onclick="closePicker()" href="${buildFeedbackLinks(day, locName, score, label).gmailUrl}" target="_blank">Gmail</a>
+            <a onclick="closePicker()" href="${buildFeedbackLinks(day, locName, score, label).outlookUrl}" target="_blank">Outlook / Hotmail</a>
+            <a onclick="closePicker()" href="${buildFeedbackLinks(day, locName, score, label).yahooUrl}" target="_blank">Yahoo Mail</a>
+            <a onclick="closePicker()" href="${buildFeedbackLinks(day, locName, score, label).mailtoUrl}">Default mail app</a>
+          </div>
+        </div>
       </div>
     </div>`;
 }
 
 function fmtTime(date) {
-  if (!date || isNaN(date)) return '--:--';
-  let h = date.getHours(), m = date.getMinutes();
-  const ampm = h >= 12 ? 'PM' : 'AM';
-  h = h % 12 || 12;
-  return `${h}:${String(m).padStart(2,'0')} ${ampm}`;
+  if (!date || isNaN(date.getTime())) return '--:--';
+  return date.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit', hour12: true });
 }
 
-function buildFeedbackMailto(day, locName, score, label) {
+function buildFeedbackLinks(day, locName, score, label) {
   const tabLabels = {sunrise:'Sunrise color',sunset:'Sunset color',stars:'Clear stars',fog:'Fog potential'};
   const subject = `Forecast observation — ${locName}, ${day.dayName} ${day.dateStr}`;
   const body = [
@@ -995,7 +1020,14 @@ function buildFeedbackMailto(day, locName, score, label) {
     `---`,
     `Sent from Photographer's Forecast · rajeshjyothiswaran.github.io/photographers-forecast`,
   ].join('\n');
-  return `mailto:rajesh@rjfineart.com?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`;
+  const s = encodeURIComponent(subject);
+  const b = encodeURIComponent(body);
+  return {
+    gmailUrl:   `https://mail.google.com/mail/?view=cm&to=rajesh@rjfineart.com&su=${s}&body=${b}`,
+    outlookUrl: `https://outlook.live.com/mail/0/deeplink/compose?to=rajesh@rjfineart.com&subject=${s}&body=${b}`,
+    yahooUrl:   `https://compose.mail.yahoo.com/?to=rajesh@rjfineart.com&subject=${s}&body=${b}`,
+    mailtoUrl:  `mailto:rajesh@rjfineart.com?subject=${s}&body=${b}`,
+  };
 }
 
 function buildVerdict(score, day, type, locType) {
@@ -1019,10 +1051,11 @@ function buildVerdict(score, day, type, locType) {
       return `${mb.emoji} ${mb.label} (${Math.round(mb.fraction*100)}% illuminated) significantly limits the window. ${hrs}h of moon-free darkness available — plan around that window carefully.`;
     }
     if (!s.mwInfo.visible) {
-      if (s.mwInfo.maxAlt !== undefined && s.mwInfo.maxAlt > 0) {
-        return `Galactic core only reaches ${Math.round(s.mwInfo.maxAlt)}° above the horizon at this latitude — too low for useful imaging. Good night for wide star trails or deep sky objects.`;
+      const alt = s.mwInfo.maxAlt;
+      if (alt !== undefined && alt > 0 && alt < 10) {
+        return `Galactic core only reaches ${Math.round(alt)}° above the horizon at this latitude — too low for useful imaging. Good night for wide star trails or deep sky objects.`;
       }
-      return `Galactic core is below the horizon at this latitude. No Milky Way core shooting possible — good night for star trails or deep sky objects.`;
+      return `Galactic core does not clear the horizon at this latitude. No Milky Way core shooting possible — good night for star trails or deep sky objects.`;
     }
     const seasonNote = {
       'pre-dawn':   'Core rises pre-dawn this time of year — plan for the 3–6 AM window.',
@@ -1082,6 +1115,21 @@ async function fetchForecast(lat, lon) {
     document.getElementById('day-grid').innerHTML = `<div class="status error-msg" style="grid-column:1/-1">Could not load forecast data. Check your internet connection and try again.</div>`;
   }
 }
+
+function toggleMailPicker(btn, e) {
+  e.stopPropagation();
+  const picker = document.getElementById('mailPicker');
+  if (!picker) return;
+  picker.style.display = picker.style.display === 'none' ? 'block' : 'none';
+}
+
+function closePicker() {
+  const picker = document.getElementById('mailPicker');
+  if (picker) picker.style.display = 'none';
+}
+
+// Close picker when clicking anywhere else
+document.addEventListener('click', () => closePicker());
 
 renderLocGrid();
 fetchForecast(LOCATIONS[0].lat, LOCATIONS[0].lon);
