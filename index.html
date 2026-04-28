@@ -234,9 +234,9 @@
 <div class="container">
   <div style="display:flex;justify-content:space-between;align-items:baseline;margin-bottom:4px">
     <h1>Photographer's forecast</h1>
-    <div style="display:flex;gap:2px;font-size:12px">
-      <button id="btnF" onclick="setUnit('F')" style="padding:3px 8px;border-radius:4px 0 0 4px;border:0.5px solid var(--border-secondary);background:var(--bg-secondary);color:var(--text);cursor:pointer;font-size:12px">°F</button>
-      <button id="btnC" onclick="setUnit('C')" style="padding:3px 8px;border-radius:0 4px 4px 0;border:0.5px solid var(--border-secondary);border-left:none;background:transparent;color:var(--text-secondary);cursor:pointer;font-size:12px">°C</button>
+    <div style="display:flex;gap:0;font-size:12px;border:1.5px solid var(--border-secondary);border-radius:6px;overflow:hidden">
+      <button id="btnF" onclick="setUnit('F')" style="padding:4px 10px;border:none;background:var(--blue);color:#fff;cursor:pointer;font-size:12px;font-weight:600;letter-spacing:0.02em">°F</button>
+      <button id="btnC" onclick="setUnit('C')" style="padding:4px 10px;border:none;background:transparent;color:var(--text-secondary);cursor:pointer;font-size:12px;font-weight:400">°C</button>
     </div>
   </div>
   <p class="subtitle">Sunrise color · Sunset color · Clear stars · Fog potential — any location</p>
@@ -522,10 +522,14 @@ let useFahrenheit = true;
 
 function setUnit(unit) {
   useFahrenheit = unit === 'F';
-  document.getElementById('btnF').style.background = useFahrenheit ? 'var(--bg-secondary)' : 'transparent';
-  document.getElementById('btnF').style.color = useFahrenheit ? 'var(--text)' : 'var(--text-secondary)';
-  document.getElementById('btnC').style.background = useFahrenheit ? 'transparent' : 'var(--bg-secondary)';
-  document.getElementById('btnC').style.color = useFahrenheit ? 'var(--text-secondary)' : 'var(--text)';
+  const btnF = document.getElementById('btnF');
+  const btnC = document.getElementById('btnC');
+  btnF.style.background    = useFahrenheit ? 'var(--blue)' : 'transparent';
+  btnF.style.color         = useFahrenheit ? '#fff' : 'var(--text-secondary)';
+  btnF.style.fontWeight    = useFahrenheit ? '600' : '400';
+  btnC.style.background    = useFahrenheit ? 'transparent' : 'var(--blue)';
+  btnC.style.color         = useFahrenheit ? 'var(--text-secondary)' : '#fff';
+  btnC.style.fontWeight    = useFahrenheit ? '400' : '600';
   if (forecastData) renderDays();
 }
 
@@ -764,9 +768,19 @@ function computeScores(dayDate, locType, forecastData, lat, lon) {
   const ssFrom = ssMs - 90*60000;
   const ssTo   = ssMs + 45*60000;
 
-  // Fog window: 4am to 9am
-  const fogFrom = new Date(dayDate); fogFrom.setHours(4,0,0,0);
-  const fogTo   = new Date(dayDate); fogTo.setHours(9,0,0,0);
+  // Fog window: 4am to 9am — anchor to actual ts values for this day
+  // Find the first ts entry for this day and use hour offsets from midnight
+  const dayMidnightMs = ts.find(t => {
+    const d = new Date(t);
+    return d.getFullYear() === dayDate.getFullYear() &&
+           d.getMonth()    === dayDate.getMonth() &&
+           d.getDate()     === dayDate.getDate() &&
+           d.getHours()    === 0;
+  });
+  // Fall back to browser-local midnight if not found
+  const fogBase = dayMidnightMs !== undefined ? dayMidnightMs : dayDate.getTime();
+  const fogFrom = fogBase + 4*3600000;
+  const fogTo   = fogBase + 9*3600000;
 
   // Stars: nightStart (this evening) → nightEnd (next morning)
   // nightEnd is already next-day dawn from SunCalc when called with today's date
@@ -792,11 +806,11 @@ function computeScores(dayDate, locType, forecastData, lat, lon) {
   const ssT  = (winAvg(temp,      ssFrom, ssTo) ?? 285) - 273.15;
   const ssWD = winAvg(windSpeed,  ssFrom, ssTo) ?? 8;
 
-  const fgLC = winAvg(lclouds,   fogFrom.getTime(), fogTo.getTime()) ?? 30;
-  const fgRH = winAvg(rh,        fogFrom.getTime(), fogTo.getTime()) ?? 70;
-  const fgWD = winAvg(windSpeed, fogFrom.getTime(), fogTo.getTime()) ?? 8;
-  const fgT  = (winAvg(temp,     fogFrom.getTime(), fogTo.getTime()) ?? 285) - 273.15;
-  const fgDP = (winAvg(dewpoint, fogFrom.getTime(), fogTo.getTime()) ?? 283) - 273.15;
+  const fgLC = winAvg(lclouds,   fogFrom, fogTo) ?? 30;
+  const fgRH = winAvg(rh,        fogFrom, fogTo) ?? 70;
+  const fgWD = winAvg(windSpeed, fogFrom, fogTo) ?? 8;
+  const fgT  = (winAvg(temp,     fogFrom, fogTo) ?? 285) - 273.15;
+  const fgDP = (winAvg(dewpoint, fogFrom, fogTo) ?? 283) - 273.15;
 
   // ── Sunrise score ──
   let sunrise = 0;
