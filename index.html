@@ -1,0 +1,521 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Photographer's Forecast — Sonoma Coast</title>
+<style>
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+  :root {
+    --bg: #ffffff;
+    --bg-secondary: #f5f4f0;
+    --bg-tertiary: #eeede9;
+    --text: #1a1a18;
+    --text-secondary: #6b6a66;
+    --border: rgba(0,0,0,0.12);
+    --border-secondary: rgba(0,0,0,0.22);
+    --radius-md: 8px;
+    --radius-lg: 12px;
+    --blue: #378ADD;
+    --blue-bg: #E6F1FB;
+    --blue-text: #185FA5;
+    --green: #1D9E75;
+    --green-bg: #E1F5EE;
+    --green-text: #0F6E56;
+    --amber: #EF9F27;
+    --amber-bg: #FAEEDA;
+    --amber-text: #BA7517;
+    --coral-bg: #FAECE7;
+    --coral-text: #993C1D;
+    --gray-bg: #F1EFE8;
+    --gray-text: #5F5E5A;
+  }
+
+  @media (prefers-color-scheme: dark) {
+    :root {
+      --bg: #1c1c1a;
+      --bg-secondary: #262624;
+      --bg-tertiary: #2e2e2c;
+      --text: #f0efe9;
+      --text-secondary: #9a9994;
+      --border: rgba(255,255,255,0.12);
+      --border-secondary: rgba(255,255,255,0.22);
+      --blue-bg: #0c2a45;
+      --blue-text: #85B7EB;
+      --green-bg: #04221a;
+      --green-text: #5DCAA5;
+      --amber-bg: #2a1c04;
+      --amber-text: #FAC775;
+      --coral-bg: #2a0e06;
+      --coral-text: #F0997B;
+      --gray-bg: #2c2c2a;
+      --gray-text: #B4B2A9;
+    }
+  }
+
+  body {
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+    background: var(--bg-tertiary);
+    color: var(--text);
+    min-height: 100vh;
+    padding: 1.5rem 1rem 3rem;
+  }
+
+  .container { max-width: 700px; margin: 0 auto; }
+
+  h1 { font-size: 20px; font-weight: 500; margin-bottom: 4px; }
+  .subtitle { font-size: 13px; color: var(--text-secondary); margin-bottom: 1.5rem; }
+
+  .loc-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(140px, 1fr)); gap: 8px; margin-bottom: 1.25rem; }
+
+  .loc-btn {
+    padding: 10px 12px 9px;
+    border-radius: var(--radius-lg);
+    border: 0.5px solid var(--border);
+    background: var(--bg);
+    cursor: pointer;
+    text-align: left;
+    transition: border-color 0.15s;
+    color: var(--text);
+  }
+  .loc-btn:hover { border-color: var(--border-secondary); }
+  .loc-btn.active { border: 1.5px solid var(--blue); background: var(--bg-secondary); }
+  .loc-name { font-size: 13px; font-weight: 500; margin-bottom: 2px; }
+  .loc-meta { font-size: 11px; color: var(--text-secondary); }
+  .loc-type { display: inline-block; font-size: 10px; padding: 2px 7px; border-radius: 4px; margin-top: 5px; font-weight: 500; }
+
+  details { margin-bottom: 1.25rem; }
+  summary { font-size: 12px; color: var(--text-secondary); cursor: pointer; padding: 4px 0; user-select: none; }
+  .custom-row { display: grid; grid-template-columns: 1fr 1fr auto; gap: 8px; align-items: end; margin-top: 8px; }
+  .field label { font-size: 11px; color: var(--text-secondary); display: block; margin-bottom: 3px; }
+  .field input {
+    width: 100%; padding: 7px 10px; border-radius: var(--radius-md);
+    border: 0.5px solid var(--border); background: var(--bg); color: var(--text);
+    font-size: 13px; outline: none;
+  }
+  .field input:focus { border-color: var(--blue); }
+
+  button.primary {
+    padding: 8px 14px; border-radius: var(--radius-md);
+    border: 0.5px solid var(--border-secondary); background: transparent;
+    color: var(--text); font-size: 13px; cursor: pointer; white-space: nowrap;
+  }
+  button.primary:hover { background: var(--bg-secondary); }
+  button.primary:active { transform: scale(0.98); }
+
+  .tabs { display: flex; gap: 6px; margin-bottom: 1.25rem; flex-wrap: wrap; }
+  .tab {
+    padding: 6px 14px; font-size: 13px; border-radius: var(--radius-md);
+    cursor: pointer; border: 0.5px solid var(--border-secondary);
+    background: transparent; color: var(--text-secondary);
+  }
+  .tab.active { background: var(--bg-secondary); color: var(--text); border-color: var(--border-secondary); font-weight: 500; }
+
+  .day-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(88px, 1fr)); gap: 8px; margin-bottom: 1.25rem; }
+
+  .day-card {
+    background: var(--bg); border: 0.5px solid var(--border);
+    border-radius: var(--radius-lg); padding: 10px 10px 9px; cursor: pointer;
+  }
+  .day-card:hover { border-color: var(--border-secondary); }
+  .day-card.selected { border: 1.5px solid var(--blue); }
+  .day-top { display: flex; justify-content: space-between; margin-bottom: 8px; }
+  .day-label { font-size: 10px; color: var(--text-secondary); }
+  .day-date { font-size: 10px; color: var(--text-secondary); }
+  .day-name { font-size: 12px; font-weight: 500; color: var(--text); }
+
+  .score-row { display: flex; align-items: center; gap: 4px; margin-bottom: 4px; }
+  .score-icon { font-size: 10px; width: 14px; text-align: center; }
+  .score-bar-wrap { flex: 1; height: 5px; background: var(--bg-secondary); border-radius: 3px; overflow: hidden; }
+  .score-bar { height: 100%; border-radius: 3px; transition: width 0.3s; }
+  .score-num { font-size: 10px; color: var(--text-secondary); min-width: 20px; text-align: right; }
+
+  .detail-panel {
+    background: var(--bg); border: 0.5px solid var(--border);
+    border-radius: var(--radius-lg); padding: 1.25rem; margin-bottom: 1rem;
+  }
+  .detail-header { display: flex; align-items: flex-start; gap: 12px; margin-bottom: 1rem; }
+  .detail-icon { font-size: 26px; line-height: 1; }
+  .detail-title { font-size: 15px; font-weight: 500; margin-bottom: 4px; }
+
+  .metric-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; margin-bottom: 1rem; }
+  .metric-card { background: var(--bg-secondary); border-radius: var(--radius-md); padding: 9px 11px; }
+  .metric-label { font-size: 10px; color: var(--text-secondary); margin-bottom: 3px; }
+  .metric-value { font-size: 18px; font-weight: 500; }
+  .metric-unit { font-size: 10px; color: var(--text-secondary); font-weight: 400; }
+
+  .badges-row { display: flex; flex-wrap: wrap; gap: 4px; margin-bottom: 10px; }
+  .badge { display: inline-flex; align-items: center; padding: 3px 9px; border-radius: var(--radius-md); font-size: 11px; font-weight: 500; }
+
+  .verdict { padding: 10px 14px; border-radius: var(--radius-md); font-size: 13px; line-height: 1.6; }
+  .tip {
+    margin-top: 8px; padding: 9px 13px; border-radius: var(--radius-md);
+    font-size: 12px; line-height: 1.55; border-left: 3px solid var(--blue);
+    background: var(--bg-secondary); color: var(--text-secondary);
+  }
+
+  .shimmer { background: var(--bg-secondary); border-radius: var(--radius-lg); height: 106px; animation: pulse 1.4s ease-in-out infinite; }
+  @keyframes pulse { 0%,100%{opacity:1} 50%{opacity:0.5} }
+
+  .status { padding: 2rem; text-align: center; color: var(--text-secondary); font-size: 13px; }
+  .error-msg { color: var(--coral-text); }
+
+  footer { margin-top: 2rem; text-align: center; font-size: 11px; color: var(--text-secondary); }
+  footer a { color: var(--blue-text); text-decoration: none; }
+</style>
+</head>
+<body>
+<div class="container">
+  <h1>Photographer's forecast</h1>
+  <p class="subtitle">Sunrise color · Sunset color · Clear stars · Fog potential — Sonoma Coast &amp; Valleys</p>
+
+  <div class="loc-grid" id="locGrid"></div>
+
+  <details>
+    <summary>Custom location (enter lat/lon)</summary>
+    <div class="custom-row">
+      <div class="field"><label>Latitude</label><input type="number" id="lat" step="0.01" placeholder="38.45"></div>
+      <div class="field"><label>Longitude</label><input type="number" id="lon" step="0.01" placeholder="-123.12"></div>
+      <button class="primary" onclick="fetchCustom()">Go →</button>
+    </div>
+  </details>
+
+  <div class="tabs">
+    <button class="tab active" onclick="setTab('sunrise',this)">🌅 Sunrise</button>
+    <button class="tab" onclick="setTab('sunset',this)">🌇 Sunset</button>
+    <button class="tab" onclick="setTab('stars',this)">★ Stars</button>
+    <button class="tab" onclick="setTab('fog',this)">☁ Fog</button>
+  </div>
+
+  <div id="day-grid" class="day-grid"></div>
+  <div id="detail-panel"></div>
+
+  <footer>
+    Forecast data: <a href="https://open-meteo.com" target="_blank">Open-Meteo</a> (free, no API key required) ·
+    Built for <a href="https://rjfineart.com" target="_blank">LadyBugFarm Images</a>
+  </footer>
+</div>
+
+<script>
+const LOCATIONS = [
+  { name: 'Jenner', lat: 38.45, lon: -123.12, type: 'coast', typeColor: '#185FA5', typeBg: '#dbeaf8', note: 'Russian River mouth · coastal' },
+  { name: 'Salt Point SP', lat: 38.57, lon: -123.33, type: 'coast', typeColor: '#185FA5', typeBg: '#dbeaf8', note: 'Gerstle Cove · rocky coast' },
+  { name: 'Mercuryville', lat: 38.78, lon: -122.82, type: 'ridge', typeColor: '#3B6D11', typeBg: '#d5ebbf', note: '2,720 ft · above fog layer' },
+  { name: 'Geyserville', lat: 38.71, lon: -122.90, type: 'valley', typeColor: '#BA7517', typeBg: '#f5e0b5', note: 'Alexander Valley floor' },
+];
+
+let currentTab = 'sunrise';
+let forecastData = null;
+let selectedDay = 0;
+let activeLocIdx = 0;
+
+const TIPS = {
+  'Jenner': {
+    sunrise: 'The Russian River mouth with fog layer above creates layered compositions. Position north of the bridge on Hwy 1 pullouts to catch river and ocean in frame.',
+    sunset: 'Shoot from the bluff above Goat Rock looking west. The river bend catches last light beautifully. Arrive 45 min early to claim your position.',
+    stars: 'Dark skies improve heading north on Hwy 1. Low coastal humidity can hurt transparency — check the dewpoint spread carefully before committing.',
+    fog: 'Morning fog rolls in from the ocean and pools in the river canyon. Elevation spots above town give a sea-of-clouds over the water at sunrise.'
+  },
+  'Salt Point SP': {
+    sunrise: 'Gerstle Cove faces southwest — not ideal for direct sunrise light. Hike north along the bluff trail for the eastern sky. Tafoni sandstone formations make excellent foreground.',
+    sunset: 'Rocky promontories and coves are excellent west-facing sunset locations. Stump Beach Cove for softer light, open bluffs for dramatic skies and wave action.',
+    stars: 'One of your darkest coastal locations. Marine layer is the main risk — check all three cloud layers. Milky Way rises to the southeast in summer.',
+    fog: 'Coast fog is frequent even in summer. The park sits right in the fog zone — elevated viewpoints along the trail give fog-over-ocean opportunities at first light.'
+  },
+  'Mercuryville': {
+    sunrise: 'At 2,720 ft you are above the marine layer most mornings. Look west to watch the fog sea glow orange at sunrise — extraordinary and rare light quality.',
+    sunset: 'The ridge gives near-360° views. Eastern sky over The Geysers geothermal field, western view toward the coast. Golden light on chaparral and oak woodland.',
+    stars: 'Your best inland dark sky location. Elevation reduces atmospheric moisture significantly. The Geysers area has minimal light pollution — excellent Milky Way site.',
+    fog: 'You sit above the fog here, not in it. A high fog score means a sea-of-clouds opportunity below you toward the coast or filling the Alexander and Dry Creek valleys.'
+  },
+  'Geyserville': {
+    sunrise: 'Alexander Valley floor locations. The Mayacamas Mountains to the east catch alpenglow beautifully. Vineyard rows at first light create strong leading lines.',
+    sunset: 'Dry Creek Road ridge above the valley gives open western views. Valley floor vineyards in golden light set against the mountains are a classic composition.',
+    stars: 'Valley location — some light pollution from Healdsburg and Santa Rosa to the south. Drive east toward the Mayacamas for noticeably darker skies.',
+    fog: 'Alexander Valley forms its own radiation fog on calm, humid autumn and winter mornings. Dense fog possible — often holds until 10am. Shoot from the ridge above.'
+  }
+};
+
+function renderLocGrid() {
+  document.getElementById('locGrid').innerHTML = LOCATIONS.map((loc, i) =>
+    `<button class="loc-btn ${i === activeLocIdx ? 'active' : ''}" onclick="selectLoc(${i})">
+      <div class="loc-name">${loc.name}</div>
+      <div class="loc-meta">${loc.note}</div>
+      <span class="loc-type" style="background:${loc.typeBg};color:${loc.typeColor}">${loc.type}</span>
+    </button>`
+  ).join('');
+}
+
+function selectLoc(i) {
+  activeLocIdx = i;
+  selectedDay = 0;
+  renderLocGrid();
+  fetchForecast(LOCATIONS[i].lat, LOCATIONS[i].lon);
+}
+
+function fetchCustom() {
+  const lat = parseFloat(document.getElementById('lat').value);
+  const lon = parseFloat(document.getElementById('lon').value);
+  if (isNaN(lat) || isNaN(lon)) return;
+  activeLocIdx = -1;
+  renderLocGrid();
+  fetchForecast(lat, lon);
+}
+
+function setTab(tab, el) {
+  currentTab = tab;
+  document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+  el.classList.add('active');
+  if (forecastData) renderDays();
+}
+
+function scoreColor(s) {
+  if (s >= 75) return '#1D9E75';
+  if (s >= 50) return '#EF9F27';
+  if (s >= 25) return '#D85A30';
+  return '#888780';
+}
+
+function scoreLabel(s) {
+  if (s >= 80) return ['Exceptional', '#0F6E56', '#c8ead8'];
+  if (s >= 65) return ['Very good',   '#0F6E56', '#c8ead8'];
+  if (s >= 50) return ['Fair',        '#BA7517', '#f5e0b5'];
+  if (s >= 30) return ['Marginal',    '#993C1D', '#f5cfc4'];
+  return              ['Poor',        '#5F5E5A', '#e8e7e2'];
+}
+
+function computeScores(d, locType) {
+  const { lclouds: lc, mclouds: mc, hclouds: hc, rh, dewpoint: dp, temp, precip, windSpeed: wind } = d;
+
+  let sunrise = 0;
+  if (lc > 40 && lc <= 75) sunrise += 35;       // smoulder zone — best for color
+  else if (lc >= 10 && lc <= 40) sunrise += 28; // partial broken cloud
+  else if (lc < 10) sunrise += 10;              // clear — some color, less dramatic
+  else if (lc > 90) sunrise -= 15;              // true overcast
+  if (mc >= 15 && mc <= 70) sunrise += 22;
+  if (hc >= 20 && hc < 80) sunrise += 15;
+  if (rh >= 60 && rh <= 88) sunrise += 12;
+  if (precip > 0.3) sunrise += 15;
+  // no wind penalty — wind doesn't affect color quality
+  if (locType === 'coast' && rh > 70) sunrise += 5;
+  // coastal marine stratus bonus: low cloud shredding at sunrise with clear sky above
+  if (locType === 'coast' && lc >= 30 && lc <= 80 && mc < 20 && hc < 30) sunrise += 18;
+
+  let sunset = 0;
+  if (lc > 40 && lc <= 75) sunset += 35;        // smoulder zone
+  else if (lc >= 10 && lc <= 40) sunset += 28;  // partial broken cloud
+  else if (lc < 10) sunset += 12;               // clear
+  else if (lc > 90) sunset -= 15;               // true overcast
+  if (mc >= 15 && mc <= 65) sunset += 22;
+  if (hc >= 25 && hc < 80) sunset += 18;
+  if (rh >= 55 && rh <= 88) sunset += 12;
+  if (precip > 0.3) sunset += 10;
+  // no wind penalty — wind doesn't affect color quality
+  if (locType === 'coast' && rh > 70) sunset += 5;
+  // coastal marine stratus bonus: NorCal low cloud glowing at sunset
+  if (locType === 'coast' && lc >= 30 && lc <= 80 && mc < 20 && hc < 30) sunset += 18;
+
+  let stars = 0;
+  const avgCloud = (lc + mc + hc) / 3;
+  if (avgCloud < 10) stars += 50; else if (avgCloud < 25) stars += 30; else if (avgCloud < 40) stars += 10; else stars -= 20;
+  if (rh < 50) stars += 25; else if (rh < 65) stars += 15; else if (rh > 85) stars -= 10;
+  const spread = temp - dp;
+  if (spread > 10) stars += 15; else if (spread > 5) stars += 8;
+  if (wind < 8) stars += 10;
+  if (precip > 0.1) stars -= 20;
+  if (locType === 'ridge') stars += 10;
+  if (locType === 'coast' && rh > 80) stars -= 10;
+
+  let fog = 0;
+  const dpSpread = temp - dp;
+  if (dpSpread < 2) fog += 40; else if (dpSpread < 4) fog += 25; else if (dpSpread < 6) fog += 10;
+  if (rh > 90) fog += 30; else if (rh > 80) fog += 18; else if (rh > 70) fog += 8;
+  if (wind < 5) fog += 20; else if (wind < 10) fog += 8;
+  if (lc > 50) fog += 10;
+  if (locType === 'coast') fog += 8;
+  if (locType === 'ridge') fog -= 10;
+
+  return {
+    sunrise: Math.max(0, Math.min(100, sunrise)),
+    sunset:  Math.max(0, Math.min(100, sunset)),
+    stars:   Math.max(0, Math.min(100, stars)),
+    fog:     Math.max(0, Math.min(100, fog))
+  };
+}
+
+function groupByDay(ts) {
+  const days = {}, order = [];
+  ts.forEach((t, i) => {
+    const d = new Date(t);
+    const key = `${d.getFullYear()}-${d.getMonth()}-${d.getDate()}`;
+    if (!days[key]) { days[key] = { ts: t, indices: [] }; order.push(key); }
+    days[key].indices.push(i);
+  });
+  return { days, order };
+}
+
+function avg(arr, indices) {
+  const vals = indices.map(i => arr[i]).filter(v => v != null);
+  return vals.length ? vals.reduce((a, b) => a + b, 0) / vals.length : 0;
+}
+
+function renderDays() {
+  const { ts, lclouds, mclouds, hclouds, rh, dewpoint, temp, precip, windSpeed } = forecastData;
+  const { days, order } = groupByDay(ts);
+  const locType = activeLocIdx >= 0 ? LOCATIONS[activeLocIdx].type : 'valley';
+
+  const dayNames   = ['Sun','Mon','Tue','Wed','Thu','Fri','Sat'];
+  const monthNames = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+
+  const dayList = order.slice(0, 7).map((key, idx) => {
+    const ind = days[key].indices;
+    const d = {
+      lclouds: avg(lclouds, ind), mclouds: avg(mclouds, ind), hclouds: avg(hclouds, ind),
+      rh: avg(rh, ind),
+      dewpoint:  avg(dewpoint, ind) - 273.15,
+      temp:      avg(temp, ind) - 273.15,
+      precip:    avg(precip, ind),
+      windSpeed: avg(windSpeed, ind)
+    };
+    const scores = computeScores(d, locType);
+    const date = new Date(days[key].ts);
+    return { key, scores, d, isToday: idx === 0, dayName: idx === 0 ? 'Today' : dayNames[date.getDay()], dateStr: `${monthNames[date.getMonth()]} ${date.getDate()}` };
+  });
+
+  const tabDefs = [
+    { key: 'sunrise', icon: '🌅' },
+    { key: 'sunset',  icon: '🌇' },
+    { key: 'stars',   icon: '★' },
+    { key: 'fog',     icon: '☁' }
+  ];
+
+  document.getElementById('day-grid').innerHTML = dayList.map((d, i) =>
+    `<div class="day-card ${i === selectedDay ? 'selected' : ''}" onclick="selectDay(${i})">
+      <div class="day-top">
+        <span class="day-name">${d.dayName}</span>
+      </div>
+      <div class="day-label" style="margin-bottom:6px">${d.dateStr}</div>
+      ${tabDefs.map(t => {
+        const s = d.scores[t.key];
+        return `<div class="score-row" style="opacity:${t.key === currentTab ? 1 : 0.38}">
+          <span class="score-icon">${t.icon}</span>
+          <div class="score-bar-wrap"><div class="score-bar" style="width:${s}%;background:${scoreColor(s)}"></div></div>
+          <span class="score-num">${Math.round(s)}</span>
+        </div>`;
+      }).join('')}
+    </div>`
+  ).join('');
+
+  renderDetail(dayList[selectedDay], locType);
+}
+
+function selectDay(i) {
+  selectedDay = i;
+  renderDays();
+}
+
+function renderDetail(day, locType) {
+  const score = day.scores[currentTab];
+  const [label, tc, bg] = scoreLabel(score);
+  const d = day.d;
+  const dpSpread = (d.temp - d.dewpoint).toFixed(1);
+  const tabIcons  = { sunrise: '🌅', sunset: '🌇', stars: '★', fog: '☁' };
+  const tabLabels = { sunrise: 'Sunrise color', sunset: 'Sunset color', stars: 'Clear stars', fog: 'Fog potential' };
+  const locName   = activeLocIdx >= 0 ? LOCATIONS[activeLocIdx].name : 'Custom location';
+
+  const badges = [];
+  if (d.precip > 0.3) badges.push(['Recent rain', '#185FA5', '#dbeaf8']);
+  if ((d.temp - d.dewpoint) < 3) badges.push(['Fog risk', '#993C1D', '#f5cfc4']);
+  if (d.windSpeed < 5) badges.push(['Calm air', '#0F6E56', '#c8ead8']);
+  if (d.windSpeed > 20) badges.push(['Windy', '#BA7517', '#f5e0b5']);
+  if (d.rh > 85) badges.push(['High humidity', '#993C1D', '#f5cfc4']);
+  const avgCloud = (d.lclouds + d.mclouds + d.hclouds) / 3;
+  if (avgCloud < 15) badges.push(['Clear sky', '#0F6E56', '#c8ead8']);
+  if (d.lclouds > 80 && d.mclouds > 80) badges.push(['Overcast', '#5F5E5A', '#e8e7e2']);
+  if (d.hclouds > 40 && d.lclouds < 30) badges.push(['Cirrus layer', '#185FA5', '#dbeaf8']);
+
+  const verdicts = buildVerdict(score, d, currentTab, locType, dpSpread);
+  const locTip = activeLocIdx >= 0 ? (TIPS[LOCATIONS[activeLocIdx].name] || {})[currentTab] : null;
+
+  document.getElementById('detail-panel').innerHTML = `
+    <div class="detail-panel">
+      <div class="detail-header">
+        <div class="detail-icon">${tabIcons[currentTab]}</div>
+        <div>
+          <div class="detail-title">${tabLabels[currentTab]} — ${day.isToday ? 'Today' : day.dayName} ${day.dateStr}</div>
+          <span class="badge" style="background:${bg};color:${tc}">${label} · ${Math.round(score)}/100</span>
+          <span style="font-size:11px;color:var(--text-secondary);margin-left:8px">${locName}</span>
+        </div>
+      </div>
+      <div class="metric-grid">
+        <div class="metric-card"><div class="metric-label">Low clouds</div><div class="metric-value">${Math.round(d.lclouds)}<span class="metric-unit">%</span></div></div>
+        <div class="metric-card"><div class="metric-label">Mid clouds</div><div class="metric-value">${Math.round(d.mclouds)}<span class="metric-unit">%</span></div></div>
+        <div class="metric-card"><div class="metric-label">High clouds</div><div class="metric-value">${Math.round(d.hclouds)}<span class="metric-unit">%</span></div></div>
+        <div class="metric-card"><div class="metric-label">Humidity</div><div class="metric-value">${Math.round(d.rh)}<span class="metric-unit">%</span></div></div>
+        <div class="metric-card"><div class="metric-label">Temp / Dew</div><div class="metric-value" style="font-size:14px">${Math.round(d.temp*9/5+32)}° / <span style="color:var(--text-secondary)">${Math.round(d.dewpoint*9/5+32)}°</span><span class="metric-unit">F</span></div></div>
+        <div class="metric-card"><div class="metric-label">Wind</div><div class="metric-value">${Math.round(d.windSpeed)}<span class="metric-unit"> mph</span></div></div>
+      </div>
+      <div class="badges-row">${badges.map(([t,tc,bg])=>`<span class="badge" style="background:${bg};color:${tc}">${t}</span>`).join('')}</div>
+      <div class="verdict" style="background:${bg};color:${tc}">${verdicts}</div>
+      ${locTip ? `<div class="tip">${locTip}</div>` : ''}
+    </div>`;
+}
+
+function buildVerdict(score, d, type, locType, dpSpread) {
+  if (type === 'sunrise' || type === 'sunset') {
+    const lbl = type === 'sunrise' ? 'sunrise' : 'sunset';
+    if (score >= 75) return `Strong color potential. Partial cloud structure across low and mid levels with good humidity will scatter warm light effectively. Worth getting out for ${lbl}.`;
+    if (score >= 55) return `Moderate color possible. Cloud structure is present but may be uneven. Could still deliver a good ${lbl} — monitor the evening before.`;
+    if (score >= 35) return `Marginal ${lbl} conditions. Coverage may be too uniform or too sparse. Watch forecasts for last-minute changes.`;
+    return `Unlikely to produce strong color. Sky is either too clear or fully overcast. Consider skipping unless you need the location for other work.`;
+  }
+  if (type === 'stars') {
+    const bonus = locType === 'ridge' ? ' Elevation advantage here improves atmospheric transparency.' : '';
+    if (score >= 75) return `Excellent conditions for astrophotography. Low cloud cover across all levels and low humidity favor sharp, high-contrast stars.${bonus}`;
+    if (score >= 50) return `Decent star visibility likely. Some cloud interference possible but transparency should be acceptable for wide-field work.${bonus}`;
+    if (score >= 30) return `Marginal — patchy clouds likely to interrupt long exposures. Consider wide compositions that don't require long clear windows.`;
+    return `Poor conditions for astrophotography. Cloud cover or humidity will significantly limit visibility. Consider rescheduling.`;
+  }
+  if (type === 'fog') {
+    const ridgeNote = locType === 'ridge' ? ' At this elevation you sit above the fog — a high score here means a sea-of-clouds opportunity below you.' : '';
+    if (score >= 70) return `High fog potential. Dewpoint spread of ${dpSpread}°C and humidity at ${Math.round(d.rh)}% strongly favor radiation or marine fog formation.${ridgeNote} Arrive early.`;
+    if (score >= 45) return `Moderate fog chance. Conditions are favorable but not certain. Valley or marine fog may form overnight and burn off by mid-morning.${ridgeNote}`;
+    if (score >= 25) return `Some low-level moisture present. Isolated fog patches possible near water or in valley floors.${ridgeNote}`;
+    return `Low fog potential. Dewpoint spread of ${dpSpread}°C is too large for significant fog formation under current conditions.`;
+  }
+}
+
+async function fetchForecast(lat, lon) {
+  selectedDay = 0;
+  document.getElementById('day-grid').innerHTML = Array(7).fill(`<div class="shimmer"></div>`).join('');
+  document.getElementById('detail-panel').innerHTML = '';
+  try {
+    const url = `https://api.open-meteo.com/v1/forecast?latitude=${lat}&longitude=${lon}&hourly=temperature_2m,dewpoint_2m,relativehumidity_2m,precipitation,cloudcover_low,cloudcover_mid,cloudcover_high,windspeed_10m&temperature_unit=celsius&windspeed_unit=mph&forecast_days=7&timezone=America%2FLos_Angeles`;
+    const res = await fetch(url);
+    if (!res.ok) throw new Error('API error');
+    const json = await res.json();
+    const h = json.hourly;
+    const toK = c => c + 273.15;
+    forecastData = {
+      ts:        h.time.map(t => new Date(t).getTime()),
+      lclouds:   h.cloudcover_low,
+      mclouds:   h.cloudcover_mid,
+      hclouds:   h.cloudcover_high,
+      rh:        h.relativehumidity_2m,
+      dewpoint:  h.dewpoint_2m.map(toK),
+      temp:      h.temperature_2m.map(toK),
+      precip:    h.precipitation,
+      windSpeed: h.windspeed_10m
+    };
+    renderDays();
+  } catch(e) {
+    document.getElementById('day-grid').innerHTML = `<div class="status error-msg" style="grid-column:1/-1">Could not load forecast data. Check your internet connection and try again.</div>`;
+  }
+}
+
+renderLocGrid();
+fetchForecast(LOCATIONS[0].lat, LOCATIONS[0].lon);
+</script>
+</body>
+</html>
