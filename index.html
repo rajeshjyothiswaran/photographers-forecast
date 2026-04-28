@@ -1,9 +1,10 @@
+
 <!DOCTYPE html>
 <html lang="en">
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Photographer's Forecast — Sonoma Coast</title>
+<title>Photographer's Forecast</title>
 <style>
   *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 
@@ -85,6 +86,41 @@
   .loc-meta { font-size: 11px; color: var(--text-secondary); }
   .loc-type { display: inline-block; font-size: 10px; padding: 2px 7px; border-radius: 4px; margin-top: 5px; font-weight: 500; }
 
+  .search-section { margin-bottom: 1.25rem; }
+  .search-row { display: flex; gap: 8px; }
+  .search-input-wrap { position: relative; flex: 1; }
+  .search-input {
+    width: 100%; padding: 9px 12px; border-radius: var(--radius-md);
+    border: 0.5px solid var(--border-secondary); background: var(--bg); color: var(--text);
+    font-size: 13px; outline: none; transition: border-color 0.15s;
+  }
+  .search-input:focus { border-color: var(--blue); }
+  .search-input::placeholder { color: var(--text-secondary); }
+  .search-btn {
+    padding: 9px 16px; border-radius: var(--radius-md);
+    border: 0.5px solid var(--border-secondary); background: transparent;
+    color: var(--text); font-size: 13px; cursor: pointer; white-space: nowrap;
+    transition: background 0.15s;
+  }
+  .search-btn:hover { background: var(--bg-secondary); }
+  .search-btn:active { transform: scale(0.98); }
+  .search-btn:disabled { opacity: 0.5; cursor: not-allowed; }
+
+  .search-results {
+    margin-top: 6px; border: 0.5px solid var(--border-secondary);
+    border-radius: var(--radius-md); background: var(--bg); overflow: hidden;
+  }
+  .search-result-item {
+    padding: 9px 12px; font-size: 13px; cursor: pointer;
+    border-bottom: 0.5px solid var(--border); transition: background 0.1s;
+    display: flex; flex-direction: column; gap: 2px;
+  }
+  .search-result-item:last-child { border-bottom: none; }
+  .search-result-item:hover { background: var(--bg-secondary); }
+  .search-result-name { font-weight: 500; }
+  .search-result-detail { font-size: 11px; color: var(--text-secondary); }
+  .search-status { padding: 9px 12px; font-size: 12px; color: var(--text-secondary); text-align: center; }
+
   details { margin-bottom: 1.25rem; }
   summary { font-size: 12px; color: var(--text-secondary); cursor: pointer; padding: 4px 0; user-select: none; }
   .custom-row { display: grid; grid-template-columns: 1fr 1fr auto; gap: 8px; align-items: end; margin-top: 8px; }
@@ -122,7 +158,6 @@
   .day-card.selected { border: 1.5px solid var(--blue); }
   .day-top { display: flex; justify-content: space-between; margin-bottom: 8px; }
   .day-label { font-size: 10px; color: var(--text-secondary); }
-  .day-date { font-size: 10px; color: var(--text-secondary); }
   .day-name { font-size: 12px; font-weight: 500; color: var(--text); }
 
   .score-row { display: flex; align-items: center; gap: 4px; margin-bottom: 4px; }
@@ -154,6 +189,20 @@
     font-size: 12px; line-height: 1.55; border-left: 3px solid var(--blue);
     background: var(--bg-secondary); color: var(--text-secondary);
   }
+  .night-label {
+    margin-top: 8px; font-size: 11px; color: var(--text-secondary);
+    padding: 0 2px;
+  }
+
+  .feedback-row { margin-top: 10px; display: flex; justify-content: flex-end; }
+  .feedback-btn {
+    display: inline-flex; align-items: center; gap: 5px;
+    padding: 6px 12px; border-radius: var(--radius-md);
+    border: 0.5px solid var(--border-secondary); background: transparent;
+    color: var(--text-secondary); font-size: 11px; cursor: pointer;
+    text-decoration: none; transition: background 0.15s, color 0.15s;
+  }
+  .feedback-btn:hover { background: var(--bg-secondary); color: var(--text); }
 
   .shimmer { background: var(--bg-secondary); border-radius: var(--radius-lg); height: 106px; animation: pulse 1.4s ease-in-out infinite; }
   @keyframes pulse { 0%,100%{opacity:1} 50%{opacity:0.5} }
@@ -168,12 +217,25 @@
 <body>
 <div class="container">
   <h1>Photographer's forecast</h1>
-  <p class="subtitle">Sunrise color · Sunset color · Clear stars · Fog potential — Sonoma Coast &amp; Valleys</p>
+  <p class="subtitle">Sunrise color · Sunset color · Clear stars · Fog potential — any location</p>
 
   <div class="loc-grid" id="locGrid"></div>
 
+  <div class="search-section">
+    <div class="search-row">
+      <div class="search-input-wrap">
+        <input class="search-input" type="text" id="citySearch"
+          placeholder="City, place, or zip code…"
+          autocomplete="off"
+          onkeydown="if(event.key==='Enter') searchCity()">
+      </div>
+      <button class="search-btn" id="searchBtn" onclick="searchCity()">Search</button>
+    </div>
+    <div id="searchResults"></div>
+  </div>
+
   <details>
-    <summary>Custom location (enter lat/lon)</summary>
+    <summary>Enter lat/lon manually</summary>
     <div class="custom-row">
       <div class="field"><label>Latitude</label><input type="number" id="lat" step="0.01" placeholder="38.45"></div>
       <div class="field"><label>Longitude</label><input type="number" id="lon" step="0.01" placeholder="-123.12"></div>
@@ -193,53 +255,326 @@
 
   <footer>
     Forecast data: <a href="https://open-meteo.com" target="_blank">Open-Meteo</a> (free, no API key required) ·
+    Geocoding: <a href="https://nominatim.openstreetmap.org" target="_blank">Nominatim / OpenStreetMap</a> ·
     Built for <a href="https://rjfineart.com" target="_blank">LadyBugFarm Images</a>
   </footer>
 </div>
 
 <script>
+// ── SunCalc (compact inline — moon phase, moonrise/set, sun position) ─────────
+// Adapted from Vladimir Agafonkin's SunCalc (BSD-2-Clause)
+const SunCalc = (() => {
+  const PI = Math.PI, sin = Math.sin, cos = Math.cos, tan = Math.tan,
+        asin = Math.asin, atan = Math.atan2, acos = Math.acos, rad = PI/180;
+  const dayMs = 1000*60*60*24, J1970 = 2440588, J2000 = 2451545;
+  const toJulian = d => d.valueOf()/dayMs - 0.5 + J1970;
+  const fromJulian = j => new Date((j + 0.5 - J1970)*dayMs);
+  const toDays = d => toJulian(d) - J2000;
+
+  function rightAscension(l,b){ return atan(sin(l)*cos(23.4397*rad) - tan(b)*sin(23.4397*rad), cos(l)); }
+  function declination(l,b){ return asin(sin(b)*cos(23.4397*rad) + cos(b)*sin(23.4397*rad)*sin(l)); }
+  function azimuth(H,phi,dec){ return atan(sin(H), cos(H)*sin(phi) - tan(dec)*cos(phi)); }
+  function altitude(H,phi,dec){ return asin(sin(phi)*sin(dec) + cos(phi)*cos(dec)*cos(H)); }
+  function siderealTime(d,lw){ return rad*(280.16+360.9856235*d) - lw; }
+
+  function moonCoords(d) {
+    const L = rad*(218.316 + 13.176396*d), M = rad*(134.963 + 13.064993*d),
+          F = rad*(93.272  + 13.229350*d),
+          l = L + rad*6.289*sin(M), b = rad*5.128*sin(F),
+          dt = 385001 - 20905*cos(M);
+    return { ra: rightAscension(l,b), dec: declination(l,b), dist: dt };
+  }
+
+  function getMoonIllumination(date) {
+    const d = toDays(date), s = sunCoords(d), m = moonCoords(d);
+    const sdist = 149598000;
+    const phi = acos(sin(s.dec)*sin(m.dec) + cos(s.dec)*cos(m.dec)*cos(s.ra-m.ra));
+    const inc = atan(sdist*sin(phi), m.dist - sdist*cos(phi));
+    const angle = atan(cos(s.dec)*sin(s.ra-m.ra), sin(s.dec)*cos(m.dec) - cos(s.dec)*sin(m.dec)*cos(s.ra-m.ra));
+    return {
+      fraction: (1 + cos(inc))/2,
+      phase: 0.5 + 0.5*inc*(angle<0?-1:1)/PI,
+      angle
+    };
+  }
+
+  function sunCoords(d) {
+    const M = rad*(357.5291 + 0.98560028*d);
+    const L = rad*(280.4665 + 0.9856474*d) + rad*1.9148*sin(M) + rad*0.02*sin(2*M);
+    return { dec: declination(L, 0), ra: rightAscension(L, 0) };
+  }
+
+  function getMoonTimes(date, lat, lng) {
+    const hc = 0.133*rad;
+    let h0 = getMoonPosition(new Date(date.valueOf()), lat, lng).altitude - hc;
+    let rise, set;
+    for (let i=1; i<=24; i+=2) {
+      const h1 = getMoonPosition(hoursLater(date,i),   lat, lng).altitude - hc;
+      const h2 = getMoonPosition(hoursLater(date,i+1), lat, lng).altitude - hc;
+      const a=(h0+h2)/2-h1, b=(h2-h0)/2, xe=-b/(2*a), ye=a*xe*xe+b*xe+h1;
+      const d2=b*b-4*a*h1;
+      let roots=0, x1=0, x2=0;
+      if (d2>=0) {
+        const dx=Math.sqrt(d2)/Math.abs(2*a);
+        x1=xe-dx; x2=xe+dx;
+        if (Math.abs(x1)<=1) roots++;
+        if (Math.abs(x2)<=1) roots++;
+        if (x1<-1) x1=x2;
+      }
+      if (roots===1) {
+        if (h0<0) rise=i+x1; else set=i+x1;
+      } else if (roots===2) {
+        rise=i+(ye<0?x2:x1);
+        set =i+(ye<0?x1:x2);
+      }
+      h0=h2;
+      if (rise&&set) break;
+    }
+    return {
+      rise: rise!=null ? hoursLater(date,rise) : null,
+      set:  set!=null  ? hoursLater(date,set)  : null,
+      alwaysUp: !rise&&!set&&ye>0,
+      alwaysDown: !rise&&!set&&ye<=0
+    };
+  }
+
+  function getMoonPosition(date, lat, lng) {
+    const lw=rad*-lng, phi=rad*lat, d=toDays(date), c=moonCoords(d);
+    const H=siderealTime(d,lw)-c.ra;
+    let h=altitude(H,phi,c.dec);
+    h += rad*0.017/tan(h + rad*10.26/(h + rad*5.10));
+    return { altitude: h };
+  }
+
+  function getSunTimes(date, lat, lng) {
+    const lw=rad*-lng, phi=rad*lat, d=toDays(date);
+    const n=Math.round(d-0.009999-lng/360), ds=n+0.0053*sin(rad*(357.5291+0.98560028*n)) - 0.0069*sin(2*rad*(280.4665+0.9856474*n));
+    const M=rad*(357.5291 + 0.98560028*ds);
+    const L=rad*(280.4665 + 0.9856474*ds) + rad*1.9148*sin(M) + rad*0.02*sin(2*M);
+    const dec=declination(L,0);
+    const Jnoon = J2000 + ds + 0.0053*sin(M) - 0.0069*sin(2*L);
+
+    function getSetJ(h) {
+      const w=acos((sin(h)-sin(phi)*sin(dec))/(cos(phi)*cos(dec)));
+      const a=atan(sin(dec), cos(dec)*cos(w)-sin(phi)*(1/cos(w)));  // not used but kept
+      return Jnoon + (acos((sin(h) - sin(phi)*sin(dec))/(cos(phi)*cos(dec))))/(2*PI);
+    }
+
+    const Jrise = Jnoon - (getSetJ(-0.833*rad) - Jnoon);
+    const Jset  = getSetJ(-0.833*rad);
+    const JastDawn = Jnoon - (getSetJ(-18*rad) - Jnoon);
+    const JastDusk = getSetJ(-18*rad);
+
+    return {
+      sunrise:    fromJulian(Jrise),
+      sunset:     fromJulian(Jset),
+      nightStart: fromJulian(JastDusk),   // astronomical dusk — true darkness begins
+      nightEnd:   fromJulian(JastDawn),   // astronomical dawn — darkness ends
+    };
+  }
+
+  function hoursLater(date, h) { return new Date(date.valueOf() + h*60*60*1000); }
+
+  return { getMoonIllumination, getMoonTimes, getSunTimes };
+})();
+
+// ── Galactic Core visibility ─────────────────────────────────────────────────
+// Returns the best MW shoot window for a given date/lat, or null if not visible.
+// Core RA ~17h45m, Dec ~-29°. We compute its rise/transit/set times roughly.
+function getMilkyWayWindow(date, lat) {
+  // Galactic Core: RA=17h45m, Dec=−29°
+  // Calculate latitude-aware season using spherical astronomy
+  const DEC_CORE = -29.0 * Math.PI / 180;
+  const H_MIN    = 10.0  * Math.PI / 180;  // minimum useful altitude
+  const LAT      = lat   * Math.PI / 180;
+
+  // Max altitude of core at transit
+  const maxAlt = Math.asin(Math.sin(LAT)*Math.sin(DEC_CORE) + Math.cos(LAT)*Math.cos(DEC_CORE));
+
+  // Core never clears 10° — not shootable at this latitude
+  if (maxAlt < H_MIN) return { visible: false, season: 'off', maxAlt: Math.degrees ? Math.degrees(maxAlt) : maxAlt*180/Math.PI };
+
+  // Hour angle when core is at h_min
+  const cosH = (Math.sin(H_MIN) - Math.sin(LAT)*Math.sin(DEC_CORE)) / (Math.cos(LAT)*Math.cos(DEC_CORE));
+  const H_hrs = Math.abs(cosH) <= 1 ? Math.acos(Math.max(-1, Math.min(1, cosH))) * 180/Math.PI / 15 : 12;
+
+  // Core transits local midnight ~June 15 (DOY 166) — consistent across latitudes
+  const CORE_MIDNIGHT_DOY = 166;
+  const seasonHalfDays = Math.round(H_hrs * 15);  // ~15 days per hour of HA
+  const firstDOY = CORE_MIDNIGHT_DOY - seasonHalfDays;
+  const lastDOY  = CORE_MIDNIGHT_DOY + seasonHalfDays;
+
+  const dayOfYear = Math.floor((date - new Date(date.getFullYear(),0,0)) / 86400000);
+
+  if (dayOfYear < firstDOY || dayOfYear > lastDOY) return { visible: false, season: 'off' };
+
+  // Season phase — derived from position within the window
+  // Pre-dawn: first 40% of season (core rises before midnight)
+  // Prime:    middle 30% (core up most of night)
+  // Early-eve:next 20% (core sets early, shoot right after dark)
+  // Closing:  last 10% (very short window)
+  const progress = (dayOfYear - firstDOY) / (lastDOY - firstDOY); // 0→1
+  let season;
+  if      (progress < 0.40) season = 'pre-dawn';
+  else if (progress < 0.70) season = 'evening';
+  else if (progress < 0.90) season = 'early-eve';
+  else                       season = 'closing';
+
+  return { visible: true, season, maxAlt: maxAlt*180/Math.PI, H_hrs, firstDOY, lastDOY };
+}
+
+// ── Moon phase label & badge ─────────────────────────────────────────────────
+function moonPhaseBadge(illum) {
+  const f = illum.fraction;
+  const p = illum.phase; // 0=new, 0.25=first quarter, 0.5=full, 0.75=last quarter
+  const waxing = p < 0.5;
+
+  let emoji, label, tc, bg;
+  if (f <= 0.06) {
+    emoji='🌑'; label='New moon';
+    tc='#0F6E56'; bg='#c8ead8';
+  } else if (f <= 0.35) {
+    emoji = waxing ? '🌒' : '🌘';
+    label = waxing ? 'Waxing crescent' : 'Waning crescent';
+    tc='#0F6E56'; bg='#c8ead8';
+  } else if (f <= 0.65) {
+    emoji = waxing ? '🌓' : '🌗';
+    label = waxing ? 'First quarter' : 'Last quarter';
+    tc='#BA7517'; bg='#f5e0b5';
+  } else if (f <= 0.90) {
+    emoji = waxing ? '🌔' : '🌖';
+    label = waxing ? 'Waxing gibbous' : 'Waning gibbous';
+    tc='#993C1D'; bg='#f5cfc4';
+  } else {
+    emoji='🌕'; label='Full moon';
+    tc='#993C1D'; bg='#f5cfc4';
+  }
+  return { emoji, label, tc, bg, fraction: f };
+}
+
+// Moon penalty on star score
+function moonPenalty(fraction) {
+  if (fraction <= 0.15) return 0;
+  if (fraction <= 0.35) return 10;
+  if (fraction <= 0.60) return 25;
+  if (fraction <= 0.85) return 40;
+  return 60; // near-full — crushing penalty
+}
+
+// ── Locations & state ────────────────────────────────────────────────────────
 const LOCATIONS = [
-  { name: 'Jenner', lat: 38.45, lon: -123.12, type: 'coast', typeColor: '#185FA5', typeBg: '#dbeaf8', note: 'Russian River mouth · coastal' },
+  { name: 'Jenner',        lat: 38.45, lon: -123.12, type: 'coast', typeColor: '#185FA5', typeBg: '#dbeaf8', note: 'Russian River mouth · coastal' },
   { name: 'Salt Point SP', lat: 38.57, lon: -123.33, type: 'coast', typeColor: '#185FA5', typeBg: '#dbeaf8', note: 'Gerstle Cove · rocky coast' },
-  { name: 'Mercuryville', lat: 38.78, lon: -122.82, type: 'ridge', typeColor: '#3B6D11', typeBg: '#d5ebbf', note: '2,720 ft · above fog layer' },
-  { name: 'Geyserville', lat: 38.71, lon: -122.90, type: 'valley', typeColor: '#BA7517', typeBg: '#f5e0b5', note: 'Alexander Valley floor' },
+  { name: 'Mercuryville',  lat: 38.78, lon: -122.82, type: 'ridge', typeColor: '#3B6D11', typeBg: '#d5ebbf', note: '2,720 ft · above fog layer' },
+  { name: 'Geyserville',   lat: 38.71, lon: -122.90, type: 'valley',typeColor: '#BA7517', typeBg: '#f5e0b5', note: 'Alexander Valley floor' },
 ];
 
-let currentTab = 'sunrise';
+let currentTab  = 'sunrise';
 let forecastData = null;
-let selectedDay = 0;
+let selectedDay  = 0;
 let activeLocIdx = 0;
+let currentLat   = LOCATIONS[0].lat;
+let currentLon   = LOCATIONS[0].lon;
+let customLocName = '';
 
 const TIPS = {
   'Jenner': {
     sunrise: 'The Russian River mouth with fog layer above creates layered compositions. Position north of the bridge on Hwy 1 pullouts to catch river and ocean in frame.',
-    sunset: 'Shoot from the bluff above Goat Rock looking west. The river bend catches last light beautifully. Arrive 45 min early to claim your position.',
-    stars: 'Dark skies improve heading north on Hwy 1. Low coastal humidity can hurt transparency — check the dewpoint spread carefully before committing.',
-    fog: 'Morning fog rolls in from the ocean and pools in the river canyon. Elevation spots above town give a sea-of-clouds over the water at sunrise.'
+    sunset:  'Shoot from the bluff above Goat Rock looking west. The river bend catches last light beautifully. Arrive 45 min early to claim your position.',
+    stars:   'Dark skies improve heading north on Hwy 1. Low coastal humidity can hurt transparency — check the dewpoint spread carefully before committing.',
+    fog:     'Morning fog rolls in from the ocean and pools in the river canyon. Elevation spots above town give a sea-of-clouds over the water at sunrise.'
   },
   'Salt Point SP': {
     sunrise: 'Gerstle Cove faces southwest — not ideal for direct sunrise light. Hike north along the bluff trail for the eastern sky. Tafoni sandstone formations make excellent foreground.',
-    sunset: 'Rocky promontories and coves are excellent west-facing sunset locations. Stump Beach Cove for softer light, open bluffs for dramatic skies and wave action.',
-    stars: 'One of your darkest coastal locations. Marine layer is the main risk — check all three cloud layers. Milky Way rises to the southeast in summer.',
-    fog: 'Coast fog is frequent even in summer. The park sits right in the fog zone — elevated viewpoints along the trail give fog-over-ocean opportunities at first light.'
+    sunset:  'Rocky promontories and coves are excellent west-facing sunset locations. Stump Beach Cove for softer light, open bluffs for dramatic skies and wave action.',
+    stars:   'One of your darkest coastal locations. Marine layer is the main risk — check all three cloud layers. Milky Way rises to the southeast in summer.',
+    fog:     'Coast fog is frequent even in summer. The park sits right in the fog zone — elevated viewpoints along the trail give fog-over-ocean opportunities at first light.'
   },
   'Mercuryville': {
     sunrise: 'At 2,720 ft you are above the marine layer most mornings. Look west to watch the fog sea glow orange at sunrise — extraordinary and rare light quality.',
-    sunset: 'The ridge gives near-360° views. Eastern sky over The Geysers geothermal field, western view toward the coast. Golden light on chaparral and oak woodland.',
-    stars: 'Your best inland dark sky location. Elevation reduces atmospheric moisture significantly. The Geysers area has minimal light pollution — excellent Milky Way site.',
-    fog: 'You sit above the fog here, not in it. A high fog score means a sea-of-clouds opportunity below you toward the coast or filling the Alexander and Dry Creek valleys.'
+    sunset:  'The ridge gives near-360° views. Eastern sky over The Geysers geothermal field, western view toward the coast. Golden light on chaparral and oak woodland.',
+    stars:   'Your best inland dark sky location. Elevation reduces atmospheric moisture significantly. The Geysers area has minimal light pollution — excellent Milky Way site.',
+    fog:     'You sit above the fog here, not in it. A high fog score means a sea-of-clouds opportunity below you toward the coast or filling the Alexander and Dry Creek valleys.'
   },
   'Geyserville': {
     sunrise: 'Alexander Valley floor locations. The Mayacamas Mountains to the east catch alpenglow beautifully. Vineyard rows at first light create strong leading lines.',
-    sunset: 'Dry Creek Road ridge above the valley gives open western views. Valley floor vineyards in golden light set against the mountains are a classic composition.',
-    stars: 'Valley location — some light pollution from Healdsburg and Santa Rosa to the south. Drive east toward the Mayacamas for noticeably darker skies.',
-    fog: 'Alexander Valley forms its own radiation fog on calm, humid autumn and winter mornings. Dense fog possible — often holds until 10am. Shoot from the ridge above.'
+    sunset:  'Dry Creek Road ridge above the valley gives open western views. Valley floor vineyards in golden light set against the mountains are a classic composition.',
+    stars:   'Valley location — some light pollution from Healdsburg and Santa Rosa to the south. Drive east toward the Mayacamas for noticeably darker skies.',
+    fog:     'Alexander Valley forms its own radiation fog on calm, humid autumn and winter mornings. Dense fog possible — often holds until 10am. Shoot from the ridge above.'
   }
 };
 
+// ── City search ──────────────────────────────────────────────────────────────
+async function searchCity() {
+  const query = document.getElementById('citySearch').value.trim();
+  if (!query) return;
+  const btn = document.getElementById('searchBtn');
+  const resultsEl = document.getElementById('searchResults');
+  btn.disabled = true; btn.textContent = '…';
+  resultsEl.innerHTML = '<div class="search-results"><div class="search-status">Searching…</div></div>';
+  try {
+    const url = `https://nominatim.openstreetmap.org/search?q=${encodeURIComponent(query)}&format=json&limit=5&addressdetails=1&countrycodes=us,ca`;
+    const res = await fetch(url, { headers: { 'Accept-Language': 'en' } });
+    if (!res.ok) throw new Error('Geocoding error');
+    const results = await res.json();
+    if (!results.length) {
+      resultsEl.innerHTML = '<div class="search-results"><div class="search-status">No results found. Try a different spelling or add a state/province.</div></div>';
+      return;
+    }
+    resultsEl.innerHTML = `<div class="search-results">
+      ${results.map(r => {
+        const name   = r.name || r.display_name.split(',')[0];
+        const detail = formatDetail(r);
+        return `<div class="search-result-item" onclick="selectSearchResult(${r.lat},${r.lon},'${escStr(name)}','${escStr(detail)}')">
+          <span class="search-result-name">${escStr(name)}</span>
+          <span class="search-result-detail">${escStr(detail)}</span>
+        </div>`;
+      }).join('')}
+    </div>`;
+  } catch(e) {
+    resultsEl.innerHTML = '<div class="search-results"><div class="search-status" style="color:var(--coral-text)">Search failed. Check your connection and try again.</div></div>';
+  } finally {
+    btn.disabled = false; btn.textContent = 'Search';
+  }
+}
+
+function escStr(s) {
+  return String(s).replace(/'/g,"\\'").replace(/</g,'&lt;').replace(/>/g,'&gt;');
+}
+
+function formatDetail(r) {
+  const a = r.address || {};
+  const parts = [];
+  const region  = a.state || a.province || a.territory || a.county || '';
+  const country = a.country_code === 'us' ? 'United States' : a.country_code === 'ca' ? 'Canada' : (a.country || '');
+  if (region)  parts.push(region);
+  if (country) parts.push(country);
+  return parts.join(', ') || r.display_name.split(',').slice(-2).map(s=>s.trim()).join(', ');
+}
+
+function selectSearchResult(lat, lon, name, detail) {
+  customLocName = detail ? `${name}, ${detail}` : name;
+  document.getElementById('citySearch').value = customLocName;
+  document.getElementById('searchResults').innerHTML = '';
+  activeLocIdx = -1;
+  renderLocGrid();
+  fetchForecast(parseFloat(lat), parseFloat(lon));
+}
+
+function fetchCustom() {
+  const lat = parseFloat(document.getElementById('lat').value);
+  const lon = parseFloat(document.getElementById('lon').value);
+  if (isNaN(lat)||isNaN(lon)) return;
+  customLocName = `${lat.toFixed(3)}, ${lon.toFixed(3)}`;
+  activeLocIdx = -1;
+  renderLocGrid();
+  fetchForecast(lat, lon);
+}
+
+// ── Location grid ────────────────────────────────────────────────────────────
 function renderLocGrid() {
-  document.getElementById('locGrid').innerHTML = LOCATIONS.map((loc, i) =>
-    `<button class="loc-btn ${i === activeLocIdx ? 'active' : ''}" onclick="selectLoc(${i})">
+  document.getElementById('locGrid').innerHTML = LOCATIONS.map((loc,i) =>
+    `<button class="loc-btn ${i===activeLocIdx?'active':''}" onclick="selectLoc(${i})">
       <div class="loc-name">${loc.name}</div>
       <div class="loc-meta">${loc.note}</div>
       <span class="loc-type" style="background:${loc.typeBg};color:${loc.typeColor}">${loc.type}</span>
@@ -248,158 +583,274 @@ function renderLocGrid() {
 }
 
 function selectLoc(i) {
-  activeLocIdx = i;
-  selectedDay = 0;
+  activeLocIdx = i; selectedDay = 0; customLocName = '';
+  document.getElementById('citySearch').value = '';
+  document.getElementById('searchResults').innerHTML = '';
   renderLocGrid();
   fetchForecast(LOCATIONS[i].lat, LOCATIONS[i].lon);
 }
 
-function fetchCustom() {
-  const lat = parseFloat(document.getElementById('lat').value);
-  const lon = parseFloat(document.getElementById('lon').value);
-  if (isNaN(lat) || isNaN(lon)) return;
-  activeLocIdx = -1;
-  renderLocGrid();
-  fetchForecast(lat, lon);
-}
-
 function setTab(tab, el) {
   currentTab = tab;
-  document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+  document.querySelectorAll('.tab').forEach(t=>t.classList.remove('active'));
   el.classList.add('active');
   if (forecastData) renderDays();
 }
 
+// ── Scoring ──────────────────────────────────────────────────────────────────
 function scoreColor(s) {
-  if (s >= 75) return '#1D9E75';
-  if (s >= 50) return '#EF9F27';
-  if (s >= 25) return '#D85A30';
+  if (s>=75) return '#1D9E75';
+  if (s>=50) return '#EF9F27';
+  if (s>=25) return '#D85A30';
   return '#888780';
 }
 
 function scoreLabel(s) {
-  if (s >= 80) return ['Exceptional', '#0F6E56', '#c8ead8'];
-  if (s >= 65) return ['Very good',   '#0F6E56', '#c8ead8'];
-  if (s >= 50) return ['Fair',        '#BA7517', '#f5e0b5'];
-  if (s >= 30) return ['Marginal',    '#993C1D', '#f5cfc4'];
-  return              ['Poor',        '#5F5E5A', '#e8e7e2'];
+  if (s>=80) return ['Exceptional','#0F6E56','#c8ead8'];
+  if (s>=65) return ['Very good',  '#0F6E56','#c8ead8'];
+  if (s>=50) return ['Fair',       '#BA7517','#f5e0b5'];
+  if (s>=30) return ['Marginal',   '#993C1D','#f5cfc4'];
+  return            ['Poor',       '#5F5E5A','#e8e7e2'];
 }
 
-function computeScores(d, locType) {
-  const { lclouds: lc, mclouds: mc, hclouds: hc, rh, dewpoint: dp, temp, precip, windSpeed: wind } = d;
+// Average hourly values for a set of timestamps (by hour range)
+function avgWindow(arr, allTs, fromMs, toMs) {
+  const vals = [];
+  allTs.forEach((t,i) => { if (t>=fromMs && t<toMs && arr[i]!=null) vals.push(arr[i]); });
+  return vals.length ? vals.reduce((a,b)=>a+b,0)/vals.length : null;
+}
 
+// Find best consecutive N-hour clear stretch in a window
+function bestClearStretch(lclouds, mclouds, hclouds, allTs, fromMs, toMs, hoursNeeded) {
+  // Collect hourly avg-cloud for hours in window
+  const hours = [];
+  allTs.forEach((t,i) => {
+    if (t>=fromMs && t<toMs) {
+      hours.push({ t, avg: (lclouds[i]+mclouds[i]+hclouds[i])/3 });
+    }
+  });
+  if (hours.length < hoursNeeded) return { bestAvg: hours.length ? hours.reduce((a,b)=>a+b.avg,0)/hours.length : 100, windowHrs: hours.length };
+  let best = 999;
+  for (let i=0; i<=hours.length-hoursNeeded; i++) {
+    const chunk = hours.slice(i, i+hoursNeeded);
+    const avg = chunk.reduce((a,b)=>a+b.avg,0)/hoursNeeded;
+    if (avg < best) best = avg;
+  }
+  return { bestAvg: best, windowHrs: hours.length };
+}
+
+function computeScores(dayDate, locType, forecastData, lat, lon) {
+  const { ts, lclouds, mclouds, hclouds, rh, dewpoint, temp, precip, windSpeed } = forecastData;
+
+  // Get sun times for this day
+  const sunTimes = SunCalc.getSunTimes(dayDate, lat, lon);
+  const srMs = sunTimes.sunrise.getTime();
+  const ssMs = sunTimes.sunset.getTime();
+  const nightStartMs = sunTimes.nightStart.getTime();  // astro dusk
+  const nightEndMs   = sunTimes.nightEnd.getTime();    // astro dawn next morning
+
+  // Sunrise window: 45 min before to 75 min after sunrise
+  const srFrom = srMs - 45*60000;
+  const srTo   = srMs + 75*60000;
+
+  // Sunset window: 90 min before to 45 min after sunset
+  const ssFrom = ssMs - 90*60000;
+  const ssTo   = ssMs + 45*60000;
+
+  // Fog window: 4am to 9am
+  const fogFrom = new Date(dayDate); fogFrom.setHours(4,0,0,0);
+  const fogTo   = new Date(dayDate); fogTo.setHours(9,0,0,0);
+
+  // Stars: nightStart (this evening) → nightEnd (next morning)
+  // nightEnd is already next-day dawn from SunCalc when called with today's date
+  const starsFrom = nightStartMs;
+  const starsTo   = nightEndMs;
+
+  // Get windowed averages
+  function winAvg(arr, from, to) { return avgWindow(arr, ts, from, to); }
+
+  const srLC = winAvg(lclouds, srFrom, srTo) ?? avgWindow(lclouds, ts, srFrom-3600000, srTo+3600000) ?? 30;
+  const srMC = winAvg(mclouds, srFrom, srTo) ?? 10;
+  const srHC = winAvg(hclouds, srFrom, srTo) ?? 10;
+  const srRH = winAvg(rh,      srFrom, srTo) ?? 70;
+  const srPR = winAvg(precip,  srFrom, srTo) ?? 0;
+
+  const ssLC = winAvg(lclouds, ssFrom, ssTo) ?? 30;
+  const ssMC = winAvg(mclouds, ssFrom, ssTo) ?? 10;
+  const ssHC = winAvg(hclouds, ssFrom, ssTo) ?? 10;
+  const ssRH = winAvg(rh,      ssFrom, ssTo) ?? 70;
+  const ssPR = winAvg(precip,  ssFrom, ssTo) ?? 0;
+
+  const fgLC = winAvg(lclouds,   fogFrom.getTime(), fogTo.getTime()) ?? 30;
+  const fgRH = winAvg(rh,        fogFrom.getTime(), fogTo.getTime()) ?? 70;
+  const fgWD = winAvg(windSpeed, fogFrom.getTime(), fogTo.getTime()) ?? 8;
+  const fgT  = (winAvg(temp,     fogFrom.getTime(), fogTo.getTime()) ?? 285) - 273.15;
+  const fgDP = (winAvg(dewpoint, fogFrom.getTime(), fogTo.getTime()) ?? 283) - 273.15;
+
+  // ── Sunrise score ──
   let sunrise = 0;
-  if (lc > 40 && lc <= 75) sunrise += 35;       // smoulder zone — best for color
-  else if (lc >= 10 && lc <= 40) sunrise += 28; // partial broken cloud
-  else if (lc < 10) sunrise += 10;              // clear — some color, less dramatic
-  else if (lc > 90) sunrise -= 15;              // true overcast
-  if (mc >= 15 && mc <= 70) sunrise += 22;
-  if (hc >= 20 && hc < 80) sunrise += 15;
-  if (rh >= 60 && rh <= 88) sunrise += 12;
-  if (precip > 0.3) sunrise += 15;
-  // no wind penalty — wind doesn't affect color quality
-  if (locType === 'coast' && rh > 70) sunrise += 5;
-  // coastal marine stratus bonus: low cloud shredding at sunrise with clear sky above
-  if (locType === 'coast' && lc >= 30 && lc <= 80 && mc < 20 && hc < 30) sunrise += 18;
+  if      (srLC > 40 && srLC <= 75) sunrise += 35;
+  else if (srLC >= 10 && srLC <= 40) sunrise += 28;
+  else if (srLC < 10)               sunrise += 10;
+  else if (srLC > 90)               sunrise -= 15;
+  if (srMC >= 15 && srMC <= 70) sunrise += 22;
+  if (srHC >= 20 && srHC < 80)  sunrise += 15;
+  if (srRH >= 60 && srRH <= 88) sunrise += 12;
+  if (srPR > 0.3) sunrise += 15;
+  if (locType==='coast' && srRH > 70) sunrise += 5;
+  if (locType==='coast' && srLC>=30 && srLC<=80 && srMC<20 && srHC<30) sunrise += 18;
 
+  // ── Sunset score ──
   let sunset = 0;
-  if (lc > 40 && lc <= 75) sunset += 35;        // smoulder zone
-  else if (lc >= 10 && lc <= 40) sunset += 28;  // partial broken cloud
-  else if (lc < 10) sunset += 12;               // clear
-  else if (lc > 90) sunset -= 15;               // true overcast
-  if (mc >= 15 && mc <= 65) sunset += 22;
-  if (hc >= 25 && hc < 80) sunset += 18;
-  if (rh >= 55 && rh <= 88) sunset += 12;
-  if (precip > 0.3) sunset += 10;
-  // no wind penalty — wind doesn't affect color quality
-  if (locType === 'coast' && rh > 70) sunset += 5;
-  // coastal marine stratus bonus: NorCal low cloud glowing at sunset
-  if (locType === 'coast' && lc >= 30 && lc <= 80 && mc < 20 && hc < 30) sunset += 18;
+  if      (ssLC > 40 && ssLC <= 75) sunset += 35;
+  else if (ssLC >= 10 && ssLC <= 40) sunset += 28;
+  else if (ssLC < 10)               sunset += 12;
+  else if (ssLC > 90)               sunset -= 15;
+  if (ssMC >= 15 && ssMC <= 65) sunset += 22;
+  if (ssHC >= 25 && ssHC < 80)  sunset += 18;
+  if (ssRH >= 55 && ssRH <= 88) sunset += 12;
+  if (ssPR > 0.3) sunset += 10;
+  if (locType==='coast' && ssRH > 70) sunset += 5;
+  if (locType==='coast' && ssLC>=30 && ssLC<=80 && ssMC<20 && ssHC<30) sunset += 18;
+
+  // ── Stars score ──
+  // Moon data for this night
+  const moonIllum = SunCalc.getMoonIllumination(new Date(nightStartMs + 2*3600000)); // check at 2hrs after dark
+  const moonTimes = SunCalc.getMoonTimes(dayDate, lat, lon);
+  const mwInfo    = getMilkyWayWindow(dayDate, lat);
+  const moonBadge = moonPhaseBadge(moonIllum);
+  const mPenalty  = moonPenalty(moonIllum.fraction);
+
+  // Find moon-free dark window — if moon rises after dark or sets before dawn
+  let effectiveStarsFrom = starsFrom;
+  let effectiveStarsTo   = starsTo;
+  let moonFreeSuffix = '';
+
+  if (moonTimes.rise && moonTimes.rise.getTime() > starsFrom && moonTimes.rise.getTime() < starsTo) {
+    // Moon rises during the night — pre-moonrise window is best
+    effectiveStarsTo = moonTimes.rise.getTime();
+  } else if (moonTimes.set && moonTimes.set.getTime() > starsFrom && moonTimes.set.getTime() < starsTo) {
+    // Moon sets during the night — post-moonset window is best
+    effectiveStarsFrom = moonTimes.set.getTime();
+  }
+
+  const moonFreeHours = Math.max(0, (effectiveStarsTo - effectiveStarsFrom) / 3600000);
+
+  // Find best 4-hour clear stretch in the moon-free window
+  const clearStretch = bestClearStretch(lclouds, mclouds, hclouds, ts, effectiveStarsFrom, effectiveStarsTo, 4);
 
   let stars = 0;
-  const avgCloud = (lc + mc + hc) / 3;
-  if (avgCloud < 10) stars += 50; else if (avgCloud < 25) stars += 30; else if (avgCloud < 40) stars += 10; else stars -= 20;
-  if (rh < 50) stars += 25; else if (rh < 65) stars += 15; else if (rh > 85) stars -= 10;
-  const spread = temp - dp;
-  if (spread > 10) stars += 15; else if (spread > 5) stars += 8;
-  if (wind < 8) stars += 10;
-  if (precip > 0.1) stars -= 20;
-  if (locType === 'ridge') stars += 10;
-  if (locType === 'coast' && rh > 80) stars -= 10;
+  // Cloud score based on best 4-hr stretch
+  if      (clearStretch.bestAvg < 10)  stars += 50;
+  else if (clearStretch.bestAvg < 25)  stars += 32;
+  else if (clearStretch.bestAvg < 40)  stars += 14;
+  else                                 stars -= 20;
 
+  // Window length bonus/penalty
+  if (moonFreeHours >= 4) stars += 10;
+  else if (moonFreeHours >= 2) stars += 0;
+  else stars -= 15;
+
+  // Humidity / transparency
+  const starsRH = winAvg(rh, effectiveStarsFrom, effectiveStarsTo) ?? 70;
+  const starsT  = (winAvg(temp, effectiveStarsFrom, effectiveStarsTo) ?? 285) - 273.15;
+  const starsDP = (winAvg(dewpoint, effectiveStarsFrom, effectiveStarsTo) ?? 283) - 273.15;
+  const starsWD = winAvg(windSpeed, effectiveStarsFrom, effectiveStarsTo) ?? 8;
+  const starsPR = winAvg(precip, starsFrom, starsTo) ?? 0;
+
+  if (starsRH < 50) stars += 25; else if (starsRH < 65) stars += 15; else if (starsRH > 85) stars -= 10;
+  const spread = starsT - starsDP;
+  if (spread > 10) stars += 15; else if (spread > 5) stars += 8;
+  if (starsWD < 8) stars += 8;
+  if (starsPR > 0.1) stars -= 20;
+  if (locType==='ridge') stars += 10;
+  if (locType==='coast' && starsRH > 80) stars -= 10;
+
+  // Ridge fog-blanket bonus: fog in the valleys below acts as a light pollution cap
+  // Only applies when you're above the fog layer (ridge) AND fog potential is high
+  // We calculate fog score inline here to use it as a bonus signal
+  const fgDpSpread = fgT - fgDP;
+  let fogPotential = 0;
+  if (fgDpSpread < 2) fogPotential += 40; else if (fgDpSpread < 4) fogPotential += 25; else if (fgDpSpread < 6) fogPotential += 10;
+  if (fgRH > 90) fogPotential += 30; else if (fgRH > 80) fogPotential += 18; else if (fgRH > 70) fogPotential += 8;
+  if (fgWD < 5) fogPotential += 20; else if (fgWD < 10) fogPotential += 8;
+  if (locType === 'ridge' && fogPotential >= 45) stars += 15;  // valley fog blankets light pollution
+  else if (locType === 'ridge' && fogPotential >= 25) stars += 8;
+
+  // Galactic core — if not visible, cap score
+  if (!mwInfo.visible) stars = Math.min(stars, 20);
+
+  // Moon penalty applied last
+  stars -= mPenalty;
+
+  // ── Fog score ──
   let fog = 0;
-  const dpSpread = temp - dp;
+  const dpSpread = fgT - fgDP;
   if (dpSpread < 2) fog += 40; else if (dpSpread < 4) fog += 25; else if (dpSpread < 6) fog += 10;
-  if (rh > 90) fog += 30; else if (rh > 80) fog += 18; else if (rh > 70) fog += 8;
-  if (wind < 5) fog += 20; else if (wind < 10) fog += 8;
-  if (lc > 50) fog += 10;
-  if (locType === 'coast') fog += 8;
-  if (locType === 'ridge') fog -= 10;
+  if (fgRH > 90) fog += 30; else if (fgRH > 80) fog += 18; else if (fgRH > 70) fog += 8;
+  if (fgWD < 5) fog += 20; else if (fgWD < 10) fog += 8;
+  if (fgLC > 50) fog += 10;
+  if (locType==='coast') fog += 8;
+  if (locType==='ridge') fog -= 10;
 
   return {
     sunrise: Math.max(0, Math.min(100, sunrise)),
     sunset:  Math.max(0, Math.min(100, sunset)),
     stars:   Math.max(0, Math.min(100, stars)),
-    fog:     Math.max(0, Math.min(100, fog))
+    fog:     Math.max(0, Math.min(100, fog)),
+    // pass-through data for detail panel
+    moonBadge, moonFreeHours, mwInfo, clearStretch,
+    fogBlanket: locType === 'ridge' && fogPotential >= 25,
+    sunTimes,
+    windowData: { srLC, srMC, srHC, srRH, ssLC, ssMC, ssHC, ssRH, fgT, fgDP, fgRH, fgWD, starsRH, spread }
   };
 }
 
+// ── Day grid & detail ────────────────────────────────────────────────────────
 function groupByDay(ts) {
-  const days = {}, order = [];
-  ts.forEach((t, i) => {
-    const d = new Date(t);
-    const key = `${d.getFullYear()}-${d.getMonth()}-${d.getDate()}`;
-    if (!days[key]) { days[key] = { ts: t, indices: [] }; order.push(key); }
+  const days={}, order=[];
+  ts.forEach((t,i)=>{
+    const d=new Date(t);
+    const key=`${d.getFullYear()}-${d.getMonth()}-${d.getDate()}`;
+    if (!days[key]) { days[key]={ts:t,indices:[]}; order.push(key); }
     days[key].indices.push(i);
   });
-  return { days, order };
-}
-
-function avg(arr, indices) {
-  const vals = indices.map(i => arr[i]).filter(v => v != null);
-  return vals.length ? vals.reduce((a, b) => a + b, 0) / vals.length : 0;
+  return {days,order};
 }
 
 function renderDays() {
-  const { ts, lclouds, mclouds, hclouds, rh, dewpoint, temp, precip, windSpeed } = forecastData;
-  const { days, order } = groupByDay(ts);
-  const locType = activeLocIdx >= 0 ? LOCATIONS[activeLocIdx].type : 'valley';
-
+  const {ts} = forecastData;
+  const {days,order} = groupByDay(ts);
+  const locType = activeLocIdx>=0 ? LOCATIONS[activeLocIdx].type : 'valley';
   const dayNames   = ['Sun','Mon','Tue','Wed','Thu','Fri','Sat'];
   const monthNames = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
 
-  const dayList = order.slice(0, 7).map((key, idx) => {
-    const ind = days[key].indices;
-    const d = {
-      lclouds: avg(lclouds, ind), mclouds: avg(mclouds, ind), hclouds: avg(hclouds, ind),
-      rh: avg(rh, ind),
-      dewpoint:  avg(dewpoint, ind) - 273.15,
-      temp:      avg(temp, ind) - 273.15,
-      precip:    avg(precip, ind),
-      windSpeed: avg(windSpeed, ind)
-    };
-    const scores = computeScores(d, locType);
+  const dayList = order.slice(0,7).map((key,idx) => {
     const date = new Date(days[key].ts);
-    return { key, scores, d, isToday: idx === 0, dayName: idx === 0 ? 'Today' : dayNames[date.getDay()], dateStr: `${monthNames[date.getMonth()]} ${date.getDate()}` };
+    // Normalize to midnight local time for this day
+    const dayDate = new Date(date.getFullYear(), date.getMonth(), date.getDate());
+    const scores = computeScores(dayDate, locType, forecastData, currentLat, currentLon);
+    return {
+      key, scores, dayDate,
+      isToday: idx===0,
+      dayName: idx===0 ? 'Today' : dayNames[date.getDay()],
+      dateStr: `${monthNames[date.getMonth()]} ${date.getDate()}`
+    };
   });
 
   const tabDefs = [
-    { key: 'sunrise', icon: '🌅' },
-    { key: 'sunset',  icon: '🌇' },
-    { key: 'stars',   icon: '★' },
-    { key: 'fog',     icon: '☁' }
+    {key:'sunrise',icon:'🌅'},{key:'sunset',icon:'🌇'},
+    {key:'stars',icon:'★'},{key:'fog',icon:'☁'}
   ];
 
-  document.getElementById('day-grid').innerHTML = dayList.map((d, i) =>
-    `<div class="day-card ${i === selectedDay ? 'selected' : ''}" onclick="selectDay(${i})">
-      <div class="day-top">
-        <span class="day-name">${d.dayName}</span>
-      </div>
+  document.getElementById('day-grid').innerHTML = dayList.map((d,i) =>
+    `<div class="day-card ${i===selectedDay?'selected':''}" onclick="selectDay(${i})">
+      <div class="day-top"><span class="day-name">${d.dayName}</span></div>
       <div class="day-label" style="margin-bottom:6px">${d.dateStr}</div>
       ${tabDefs.map(t => {
         const s = d.scores[t.key];
-        return `<div class="score-row" style="opacity:${t.key === currentTab ? 1 : 0.38}">
-          <span class="score-icon">${t.icon}</span>
+        return `<div class="score-row" style="opacity:${t.key===currentTab?1:0.38}">
+          <span class="score-icon">${t.key==='stars' ? d.scores.moonBadge.emoji : t.icon}</span>
           <div class="score-bar-wrap"><div class="score-bar" style="width:${s}%;background:${scoreColor(s)}"></div></div>
           <span class="score-num">${Math.round(s)}</span>
         </div>`;
@@ -410,95 +861,213 @@ function renderDays() {
   renderDetail(dayList[selectedDay], locType);
 }
 
-function selectDay(i) {
-  selectedDay = i;
-  renderDays();
-}
+function selectDay(i) { selectedDay=i; renderDays(); }
 
 function renderDetail(day, locType) {
   const score = day.scores[currentTab];
   const [label, tc, bg] = scoreLabel(score);
-  const d = day.d;
-  const dpSpread = (d.temp - d.dewpoint).toFixed(1);
-  const tabIcons  = { sunrise: '🌅', sunset: '🌇', stars: '★', fog: '☁' };
-  const tabLabels = { sunrise: 'Sunrise color', sunset: 'Sunset color', stars: 'Clear stars', fog: 'Fog potential' };
-  const locName   = activeLocIdx >= 0 ? LOCATIONS[activeLocIdx].name : 'Custom location';
+  const s = day.scores;
+  const tabIcons  = {sunrise:'🌅',sunset:'🌇',stars:'★',fog:'☁'};
+  const tabLabels = {sunrise:'Sunrise color',sunset:'Sunset color',stars:'Clear stars',fog:'Fog potential'};
+  const locName   = activeLocIdx>=0 ? LOCATIONS[activeLocIdx].name : (customLocName||'Custom location');
+  const w = s.windowData;
 
   const badges = [];
-  if (d.precip > 0.3) badges.push(['Recent rain', '#185FA5', '#dbeaf8']);
-  if ((d.temp - d.dewpoint) < 3) badges.push(['Fog risk', '#993C1D', '#f5cfc4']);
-  if (d.windSpeed < 5) badges.push(['Calm air', '#0F6E56', '#c8ead8']);
-  if (d.windSpeed > 20) badges.push(['Windy', '#BA7517', '#f5e0b5']);
-  if (d.rh > 85) badges.push(['High humidity', '#993C1D', '#f5cfc4']);
-  const avgCloud = (d.lclouds + d.mclouds + d.hclouds) / 3;
-  if (avgCloud < 15) badges.push(['Clear sky', '#0F6E56', '#c8ead8']);
-  if (d.lclouds > 80 && d.mclouds > 80) badges.push(['Overcast', '#5F5E5A', '#e8e7e2']);
-  if (d.hclouds > 40 && d.lclouds < 30) badges.push(['Cirrus layer', '#185FA5', '#dbeaf8']);
 
-  const verdicts = buildVerdict(score, d, currentTab, locType, dpSpread);
-  const locTip = activeLocIdx >= 0 ? (TIPS[LOCATIONS[activeLocIdx].name] || {})[currentTab] : null;
+  if (currentTab === 'stars') {
+    // Moon badge always leads for stars
+    badges.push([`${s.moonBadge.emoji} ${s.moonBadge.label} · ${Math.round(s.moonBadge.fraction*100)}%`, s.moonBadge.tc, s.moonBadge.bg]);
+    if (!s.mwInfo.visible) badges.push(['Core below horizon', '#5F5E5A', '#e8e7e2']);
+    else if (s.mwInfo.season==='pre-dawn')  badges.push(['Core: pre-dawn', '#185FA5', '#dbeaf8']);
+    else if (s.mwInfo.season==='early-eve') badges.push(['Core: early evening', '#185FA5', '#dbeaf8']);
+    else if (s.mwInfo.season==='closing')   badges.push(['Season closing', '#BA7517', '#f5e0b5']);
+    if (s.moonFreeHours >= 4) badges.push([`${s.moonFreeHours.toFixed(0)}h dark window`, '#0F6E56', '#c8ead8']);
+    else if (s.moonFreeHours >= 2) badges.push([`${s.moonFreeHours.toFixed(0)}h dark window`, '#BA7517', '#f5e0b5']);
+    else badges.push(['Short dark window', '#993C1D', '#f5cfc4']);
+    if (s.fogBlanket) badges.push(['Fog blanket below', '#0F6E56', '#c8ead8']);
+  } else {
+    const lc = currentTab==='sunrise' ? w.srLC : currentTab==='sunset' ? w.ssLC : w.fgRH;
+    const dpSpr = (w.fgT - w.fgDP).toFixed(1);
+    if (currentTab==='fog' && (w.fgT-w.fgDP) < 3) badges.push(['Fog risk', '#993C1D', '#f5cfc4']);
+    if (currentTab!=='fog' && (w.fgT-w.fgDP) < 3) badges.push(['Fog likely', '#185FA5', '#dbeaf8']);
+    const rhVal = currentTab==='sunrise' ? w.srRH : currentTab==='sunset' ? w.ssRH : w.fgRH;
+    if (rhVal < 50) badges.push(['Low humidity', '#0F6E56', '#c8ead8']);
+    if (rhVal > 88) badges.push(['High humidity', '#993C1D', '#f5cfc4']);
+    const lcVal = currentTab==='sunrise' ? w.srLC : currentTab==='sunset' ? w.ssLC : w.fgRH;
+    if (currentTab!=='fog') {
+      const mcVal = currentTab==='sunrise' ? w.srMC : w.ssMC;
+      const hcVal = currentTab==='sunrise' ? w.srHC : w.ssHC;
+      const avgC = (lcVal+mcVal+hcVal)/3;
+      if (avgC < 12) badges.push(['Clear sky', '#0F6E56', '#c8ead8']);
+      if (lcVal > 40 && lcVal <= 75 && mcVal < 20) badges.push(['Smoulder zone', '#BA7517', '#f5e0b5']);
+      if (lcVal > 80 && mcVal > 60) badges.push(['Overcast', '#5F5E5A', '#e8e7e2']);
+      if (hcVal > 40 && lcVal < 30) badges.push(['Cirrus layer', '#185FA5', '#dbeaf8']);
+    }
+  }
+
+  const verdict = buildVerdict(score, day, currentTab, locType);
+  const locTip = activeLocIdx>=0 ? (TIPS[LOCATIONS[activeLocIdx].name]||{})[currentTab] : null;
+
+  // Night label for stars
+  const monthNames = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+  const nextDay = new Date(day.dayDate); nextDay.setDate(nextDay.getDate()+1);
+  const nightLabel = currentTab==='stars'
+    ? `Night of ${day.dayName} ${day.dateStr} → ${monthNames[nextDay.getMonth()]} ${nextDay.getDate()}`
+    : '';
+
+  // Metric grid — show window-relevant data
+  let metrics = '';
+  if (currentTab==='sunrise') {
+    metrics = `
+      <div class="metric-card"><div class="metric-label">Low clouds</div><div class="metric-value">${Math.round(w.srLC)}<span class="metric-unit">%</span></div></div>
+      <div class="metric-card"><div class="metric-label">Mid clouds</div><div class="metric-value">${Math.round(w.srMC)}<span class="metric-unit">%</span></div></div>
+      <div class="metric-card"><div class="metric-label">High clouds</div><div class="metric-value">${Math.round(w.srHC)}<span class="metric-unit">%</span></div></div>
+      <div class="metric-card"><div class="metric-label">Humidity</div><div class="metric-value">${Math.round(w.srRH)}<span class="metric-unit">%</span></div></div>
+      <div class="metric-card"><div class="metric-label">Sunrise</div><div class="metric-value" style="font-size:14px">${fmtTime(s.sunTimes.sunrise)}<span class="metric-unit"> AM</span></div></div>
+      <div class="metric-card"><div class="metric-label">Window</div><div class="metric-value" style="font-size:13px">${fmtTime(new Date(s.sunTimes.sunrise.getTime()-45*60000))}–${fmtTime(new Date(s.sunTimes.sunrise.getTime()+75*60000))}</div></div>`;
+  } else if (currentTab==='sunset') {
+    metrics = `
+      <div class="metric-card"><div class="metric-label">Low clouds</div><div class="metric-value">${Math.round(w.ssLC)}<span class="metric-unit">%</span></div></div>
+      <div class="metric-card"><div class="metric-label">Mid clouds</div><div class="metric-value">${Math.round(w.ssMC)}<span class="metric-unit">%</span></div></div>
+      <div class="metric-card"><div class="metric-label">High clouds</div><div class="metric-value">${Math.round(w.ssHC)}<span class="metric-unit">%</span></div></div>
+      <div class="metric-card"><div class="metric-label">Humidity</div><div class="metric-value">${Math.round(w.ssRH)}<span class="metric-unit">%</span></div></div>
+      <div class="metric-card"><div class="metric-label">Sunset</div><div class="metric-value" style="font-size:14px">${fmtTime(s.sunTimes.sunset)}<span class="metric-unit"> PM</span></div></div>
+      <div class="metric-card"><div class="metric-label">Window</div><div class="metric-value" style="font-size:13px">${fmtTime(new Date(s.sunTimes.sunset.getTime()-90*60000))}–${fmtTime(new Date(s.sunTimes.sunset.getTime()+45*60000))}</div></div>`;
+  } else if (currentTab==='stars') {
+    metrics = `
+      <div class="metric-card"><div class="metric-label">Moon</div><div class="metric-value" style="font-size:14px">${s.moonBadge.emoji} ${Math.round(s.moonBadge.fraction*100)}<span class="metric-unit">%</span></div></div>
+      <div class="metric-card"><div class="metric-label">Dark window</div><div class="metric-value" style="font-size:14px">${s.moonFreeHours.toFixed(1)}<span class="metric-unit">h</span></div></div>
+      <div class="metric-card"><div class="metric-label">Best 4h clouds</div><div class="metric-value">${Math.round(s.clearStretch.bestAvg)}<span class="metric-unit">%</span></div></div>
+      <div class="metric-card"><div class="metric-label">Humidity</div><div class="metric-value">${Math.round(w.starsRH)}<span class="metric-unit">%</span></div></div>
+      <div class="metric-card"><div class="metric-label">Dew spread</div><div class="metric-value">${w.spread.toFixed(1)}<span class="metric-unit">°C</span></div></div>
+      <div class="metric-card"><div class="metric-label">Dark starts</div><div class="metric-value" style="font-size:13px">${fmtTime(s.sunTimes.nightStart)}</div></div>`;
+  } else {
+    metrics = `
+      <div class="metric-card"><div class="metric-label">Low clouds</div><div class="metric-value">${Math.round(w.fgLC)}<span class="metric-unit">%</span></div></div>
+      <div class="metric-card"><div class="metric-label">Humidity</div><div class="metric-value">${Math.round(w.fgRH)}<span class="metric-unit">%</span></div></div>
+      <div class="metric-card"><div class="metric-label">Wind</div><div class="metric-value">${Math.round(w.fgWD)}<span class="metric-unit"> mph</span></div></div>
+      <div class="metric-card"><div class="metric-label">Temp</div><div class="metric-value">${Math.round(w.fgT*9/5+32)}<span class="metric-unit">°F</span></div></div>
+      <div class="metric-card"><div class="metric-label">Dewpoint</div><div class="metric-value">${Math.round(w.fgDP*9/5+32)}<span class="metric-unit">°F</span></div></div>
+      <div class="metric-card"><div class="metric-label">D-P spread</div><div class="metric-value">${(w.fgT-w.fgDP).toFixed(1)}<span class="metric-unit">°C</span></div></div>`;
+  }
 
   document.getElementById('detail-panel').innerHTML = `
     <div class="detail-panel">
       <div class="detail-header">
         <div class="detail-icon">${tabIcons[currentTab]}</div>
         <div>
-          <div class="detail-title">${tabLabels[currentTab]} — ${day.isToday ? 'Today' : day.dayName} ${day.dateStr}</div>
+          <div class="detail-title">${tabLabels[currentTab]} — ${day.isToday?'Today':day.dayName} ${day.dateStr}</div>
           <span class="badge" style="background:${bg};color:${tc}">${label} · ${Math.round(score)}/100</span>
           <span style="font-size:11px;color:var(--text-secondary);margin-left:8px">${locName}</span>
         </div>
       </div>
-      <div class="metric-grid">
-        <div class="metric-card"><div class="metric-label">Low clouds</div><div class="metric-value">${Math.round(d.lclouds)}<span class="metric-unit">%</span></div></div>
-        <div class="metric-card"><div class="metric-label">Mid clouds</div><div class="metric-value">${Math.round(d.mclouds)}<span class="metric-unit">%</span></div></div>
-        <div class="metric-card"><div class="metric-label">High clouds</div><div class="metric-value">${Math.round(d.hclouds)}<span class="metric-unit">%</span></div></div>
-        <div class="metric-card"><div class="metric-label">Humidity</div><div class="metric-value">${Math.round(d.rh)}<span class="metric-unit">%</span></div></div>
-        <div class="metric-card"><div class="metric-label">Temp / Dew</div><div class="metric-value" style="font-size:14px">${Math.round(d.temp*9/5+32)}° / <span style="color:var(--text-secondary)">${Math.round(d.dewpoint*9/5+32)}°</span><span class="metric-unit">F</span></div></div>
-        <div class="metric-card"><div class="metric-label">Wind</div><div class="metric-value">${Math.round(d.windSpeed)}<span class="metric-unit"> mph</span></div></div>
-      </div>
+      <div class="metric-grid">${metrics}</div>
       <div class="badges-row">${badges.map(([t,tc,bg])=>`<span class="badge" style="background:${bg};color:${tc}">${t}</span>`).join('')}</div>
-      <div class="verdict" style="background:${bg};color:${tc}">${verdicts}</div>
+      <div class="verdict" style="background:${bg};color:${tc}">${verdict}</div>
+      ${nightLabel ? `<div class="night-label">📅 ${nightLabel}</div>` : ''}
       ${locTip ? `<div class="tip">${locTip}</div>` : ''}
+      <div class="feedback-row">
+        <a class="feedback-btn" href="${buildFeedbackMailto(day, locName, score, label)}" target="_blank">✉ Report what you actually saw</a>
+      </div>
     </div>`;
 }
 
-function buildVerdict(score, d, type, locType, dpSpread) {
-  if (type === 'sunrise' || type === 'sunset') {
-    const lbl = type === 'sunrise' ? 'sunrise' : 'sunset';
-    if (score >= 75) return `Strong color potential. Partial cloud structure across low and mid levels with good humidity will scatter warm light effectively. Worth getting out for ${lbl}.`;
-    if (score >= 55) return `Moderate color possible. Cloud structure is present but may be uneven. Could still deliver a good ${lbl} — monitor the evening before.`;
-    if (score >= 35) return `Marginal ${lbl} conditions. Coverage may be too uniform or too sparse. Watch forecasts for last-minute changes.`;
-    return `Unlikely to produce strong color. Sky is either too clear or fully overcast. Consider skipping unless you need the location for other work.`;
+function fmtTime(date) {
+  if (!date || isNaN(date)) return '--:--';
+  let h = date.getHours(), m = date.getMinutes();
+  const ampm = h >= 12 ? 'PM' : 'AM';
+  h = h % 12 || 12;
+  return `${h}:${String(m).padStart(2,'0')} ${ampm}`;
+}
+
+function buildFeedbackMailto(day, locName, score, label) {
+  const tabLabels = {sunrise:'Sunrise color',sunset:'Sunset color',stars:'Clear stars',fog:'Fog potential'};
+  const subject = `Forecast observation — ${locName}, ${day.dayName} ${day.dateStr}`;
+  const body = [
+    `Location: ${locName}`,
+    `Date: ${day.dayName} ${day.dateStr}`,
+    `Category: ${tabLabels[currentTab]}`,
+    `Tool prediction: ${label} (${Math.round(score)}/100)`,
+    ``,
+    `What I actually saw:`,
+    `(describe the sky conditions, fog, stars — was the prediction accurate?)`,
+    ``,
+    `---`,
+    `Sent from Photographer's Forecast · rajeshjyothiswaran.github.io/photographers-forecast`,
+  ].join('\n');
+  return `mailto:rajesh@rjfineart.com?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`;
+}
+
+function buildVerdict(score, day, type, locType) {
+  const s = day.scores;
+  const w = s.windowData;
+
+  if (type==='sunrise'||type==='sunset') {
+    const lbl = type==='sunrise' ? 'sunrise' : 'sunset';
+    if (score>=75) return `Strong color potential. Cloud structure in the ${lbl} window with good humidity will scatter warm light effectively. Worth getting out.`;
+    if (score>=55) return `Moderate color possible. Cloud structure is present but may be uneven. Could still deliver a good ${lbl} — monitor conditions the evening before.`;
+    if (score>=35) return `Marginal ${lbl} conditions. Coverage may be too uniform or too sparse in the critical window. Watch for last-minute changes.`;
+    return `Unlikely to produce strong color. Sky appears either too clear or fully overcast during the ${lbl} window.`;
   }
-  if (type === 'stars') {
-    const bonus = locType === 'ridge' ? ' Elevation advantage here improves atmospheric transparency.' : '';
-    if (score >= 75) return `Excellent conditions for astrophotography. Low cloud cover across all levels and low humidity favor sharp, high-contrast stars.${bonus}`;
-    if (score >= 50) return `Decent star visibility likely. Some cloud interference possible but transparency should be acceptable for wide-field work.${bonus}`;
-    if (score >= 30) return `Marginal — patchy clouds likely to interrupt long exposures. Consider wide compositions that don't require long clear windows.`;
-    return `Poor conditions for astrophotography. Cloud cover or humidity will significantly limit visibility. Consider rescheduling.`;
+
+  if (type==='stars') {
+    const mb = s.moonBadge;
+    // Moon is the lead story when it's dominant
+    if (mb.fraction > 0.85) return `${mb.emoji} Full moon tonight washes out the Milky Way core entirely. Even in perfect skies the core will be invisible. Consider shooting the moonlit landscape instead.`;
+    if (mb.fraction > 0.60) {
+      const hrs = s.moonFreeHours.toFixed(1);
+      return `${mb.emoji} ${mb.label} (${Math.round(mb.fraction*100)}% illuminated) significantly limits the window. ${hrs}h of moon-free darkness available — plan around that window carefully.`;
+    }
+    if (!s.mwInfo.visible) {
+      if (s.mwInfo.maxAlt !== undefined && s.mwInfo.maxAlt > 0) {
+        return `Galactic core only reaches ${Math.round(s.mwInfo.maxAlt)}° above the horizon at this latitude — too low for useful imaging. Good night for wide star trails or deep sky objects.`;
+      }
+      return `Galactic core is below the horizon at this latitude. No Milky Way core shooting possible — good night for star trails or deep sky objects.`;
+    }
+    const seasonNote = {
+      'pre-dawn':   'Core rises pre-dawn this time of year — plan for the 3–6 AM window.',
+      'evening':    'Prime season — core visible most of the night.',
+      'early-eve':  'Core is high right after dark — start shooting within an hour of astronomical twilight.',
+      'closing':    'Season is closing — core sets early. Get there right after dark.'
+    }[s.mwInfo.season] || '';
+    const coreAlt = s.mwInfo.maxAlt ? ` Core peaks at ${Math.round(s.mwInfo.maxAlt)}° altitude here.` : '';
+    const ridgeBonus = locType==='ridge' ? ' Elevation improves transparency significantly.' : '';
+    const fogBlanket = (locType==='ridge' && s.fogBlanket) ? ' Valley fog below will blanket light pollution — darker skies than usual.' : '';
+    if (score>=75) return `Excellent night for astrophotography. ${s.moonFreeHours.toFixed(0)}h moon-free window with ${Math.round(s.clearStretch.bestAvg)}% average cloud in the best stretch.${coreAlt} ${seasonNote}${ridgeBonus}${fogBlanket}`;
+    if (score>=50) return `Good potential. Best ${Math.round(s.clearStretch.bestAvg)}% cloud stretch in the dark window.${coreAlt} ${seasonNote}${ridgeBonus}${fogBlanket}`;
+    if (score>=30) return `Marginal — patchy clouds or limited dark window.${coreAlt} ${seasonNote} Wide compositions that don't require long uninterrupted windows may work.`;
+    return `Poor conditions. Cloud cover, moon, or both will significantly limit shooting. Consider rescheduling.`;
   }
-  if (type === 'fog') {
-    const ridgeNote = locType === 'ridge' ? ' At this elevation you sit above the fog — a high score here means a sea-of-clouds opportunity below you.' : '';
-    if (score >= 70) return `High fog potential. Dewpoint spread of ${dpSpread}°C and humidity at ${Math.round(d.rh)}% strongly favor radiation or marine fog formation.${ridgeNote} Arrive early.`;
-    if (score >= 45) return `Moderate fog chance. Conditions are favorable but not certain. Valley or marine fog may form overnight and burn off by mid-morning.${ridgeNote}`;
-    if (score >= 25) return `Some low-level moisture present. Isolated fog patches possible near water or in valley floors.${ridgeNote}`;
-    return `Low fog potential. Dewpoint spread of ${dpSpread}°C is too large for significant fog formation under current conditions.`;
+
+  if (type==='fog') {
+    const dpSpr = (w.fgT-w.fgDP).toFixed(1);
+    const ridgeNote = locType==='ridge' ? ' At this elevation you sit above the fog — a high score means sea-of-clouds below you.' : '';
+    if (score>=70) return `High fog potential. Dewpoint spread of ${dpSpr}°C and humidity at ${Math.round(w.fgRH)}% strongly favor radiation or marine fog formation.${ridgeNote} Arrive early.`;
+    if (score>=45) return `Moderate fog chance. Conditions are favorable but not certain. Valley or marine fog may form overnight and burn off by mid-morning.${ridgeNote}`;
+    if (score>=25) return `Some low-level moisture present. Isolated fog patches possible near water or in valley floors.${ridgeNote}`;
+    return `Low fog potential. Dewpoint spread of ${dpSpr}°C is too large for significant fog formation under current conditions.`;
   }
 }
 
+// ── Forecast fetch ───────────────────────────────────────────────────────────
 async function fetchForecast(lat, lon) {
+  currentLat = lat; currentLon = lon;
   selectedDay = 0;
   document.getElementById('day-grid').innerHTML = Array(7).fill(`<div class="shimmer"></div>`).join('');
   document.getElementById('detail-panel').innerHTML = '';
   try {
-    const url = `https://api.open-meteo.com/v1/forecast?latitude=${lat}&longitude=${lon}&hourly=temperature_2m,dewpoint_2m,relativehumidity_2m,precipitation,cloudcover_low,cloudcover_mid,cloudcover_high,windspeed_10m&temperature_unit=celsius&windspeed_unit=mph&forecast_days=7&timezone=America%2FLos_Angeles`;
+    const url = `https://api.open-meteo.com/v1/forecast?latitude=${lat}&longitude=${lon}`
+      + `&hourly=temperature_2m,dewpoint_2m,relativehumidity_2m,precipitation,`
+      + `cloudcover_low,cloudcover_mid,cloudcover_high,windspeed_10m`
+      + `&temperature_unit=celsius&windspeed_unit=mph&forecast_days=8`
+      + `&timezone=America%2FLos_Angeles`;
     const res = await fetch(url);
     if (!res.ok) throw new Error('API error');
     const json = await res.json();
     const h = json.hourly;
-    const toK = c => c + 273.15;
+    const toK = c => c+273.15;
     forecastData = {
-      ts:        h.time.map(t => new Date(t).getTime()),
+      ts:        h.time.map(t=>new Date(t).getTime()),
       lclouds:   h.cloudcover_low,
       mclouds:   h.cloudcover_mid,
       hclouds:   h.cloudcover_high,
