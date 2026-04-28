@@ -232,7 +232,13 @@
 </head>
 <body>
 <div class="container">
-  <h1>Photographer's forecast</h1>
+  <div style="display:flex;justify-content:space-between;align-items:baseline;margin-bottom:4px">
+    <h1>Photographer's forecast</h1>
+    <div style="display:flex;gap:2px;font-size:12px">
+      <button id="btnF" onclick="setUnit('F')" style="padding:3px 8px;border-radius:4px 0 0 4px;border:0.5px solid var(--border-secondary);background:var(--bg-secondary);color:var(--text);cursor:pointer;font-size:12px">°F</button>
+      <button id="btnC" onclick="setUnit('C')" style="padding:3px 8px;border-radius:0 4px 4px 0;border:0.5px solid var(--border-secondary);border-left:none;background:transparent;color:var(--text-secondary);cursor:pointer;font-size:12px">°C</button>
+    </div>
+  </div>
   <p class="subtitle">Sunrise color · Sunset color · Clear stars · Fog potential — any location</p>
 
   <div class="loc-grid" id="locGrid"></div>
@@ -512,6 +518,27 @@ let activeLocIdx = 0;
 let currentLat   = LOCATIONS[0].lat;
 let currentLon   = LOCATIONS[0].lon;
 let customLocName = '';
+let useFahrenheit = true;
+
+function setUnit(unit) {
+  useFahrenheit = unit === 'F';
+  document.getElementById('btnF').style.background = useFahrenheit ? 'var(--bg-secondary)' : 'transparent';
+  document.getElementById('btnF').style.color = useFahrenheit ? 'var(--text)' : 'var(--text-secondary)';
+  document.getElementById('btnC').style.background = useFahrenheit ? 'transparent' : 'var(--bg-secondary)';
+  document.getElementById('btnC').style.color = useFahrenheit ? 'var(--text-secondary)' : 'var(--text)';
+  if (forecastData) renderDays();
+}
+
+function fmtTemp(c) {
+  if (c == null || isNaN(c)) return '--';
+  return useFahrenheit ? `${Math.round(c*9/5+32)}°F` : `${Math.round(c)}°C`;
+}
+
+function fmtSpread(c) {
+  // D-P spread always in same unit as current preference
+  if (c == null || isNaN(c)) return '--';
+  return useFahrenheit ? `${(c*9/5).toFixed(1)}°F` : `${c.toFixed(1)}°C`;
+}
 
 const TIPS = {
   'Jenner': {
@@ -754,12 +781,16 @@ function computeScores(dayDate, locType, forecastData, lat, lon) {
   const srHC = winAvg(hclouds, srFrom, srTo) ?? 10;
   const srRH = winAvg(rh,      srFrom, srTo) ?? 70;
   const srPR = winAvg(precip,  srFrom, srTo) ?? 0;
+  const srT  = (winAvg(temp,      srFrom, srTo) ?? 285) - 273.15;
+  const srWD = winAvg(windSpeed,  srFrom, srTo) ?? 8;
 
   const ssLC = winAvg(lclouds, ssFrom, ssTo) ?? 30;
   const ssMC = winAvg(mclouds, ssFrom, ssTo) ?? 10;
   const ssHC = winAvg(hclouds, ssFrom, ssTo) ?? 10;
   const ssRH = winAvg(rh,      ssFrom, ssTo) ?? 70;
   const ssPR = winAvg(precip,  ssFrom, ssTo) ?? 0;
+  const ssT  = (winAvg(temp,      ssFrom, ssTo) ?? 285) - 273.15;
+  const ssWD = winAvg(windSpeed,  ssFrom, ssTo) ?? 8;
 
   const fgLC = winAvg(lclouds,   fogFrom.getTime(), fogTo.getTime()) ?? 30;
   const fgRH = winAvg(rh,        fogFrom.getTime(), fogTo.getTime()) ?? 70;
@@ -886,7 +917,7 @@ function computeScores(dayDate, locType, forecastData, lat, lon) {
     moonBadge, moonFreeHours, mwInfo, clearStretch,
     fogBlanket: locType === 'ridge' && fogPotential >= 25,
     sunTimes,
-    windowData: { srLC, srMC, srHC, srRH, ssLC, ssMC, ssHC, ssRH, fgT, fgDP, fgRH, fgWD, starsRH, spread }
+    windowData: { srLC, srMC, srHC, srRH, srT, srWD, ssLC, ssMC, ssHC, ssRH, ssT, ssWD, fgT, fgDP, fgRH, fgWD, starsRH, starsT, starsWD, spread }
   };
 }
 
@@ -1001,6 +1032,7 @@ function renderDetail(day, locType) {
 
   // Metric grid — show window-relevant data
   let metrics = '';
+  let ambientWeather = '';
   if (currentTab==='sunrise') {
     const srWinFrom = formatISOTimeStr_offset(s.sunTimes.sunriseStr, -45);
     const srWinTo   = formatISOTimeStr_offset(s.sunTimes.sunriseStr,  75);
@@ -1011,6 +1043,7 @@ function renderDetail(day, locType) {
       <div class="metric-card"><div class="metric-label">Humidity</div><div class="metric-value">${Math.round(w.srRH)}<span class="metric-unit">%</span></div></div>
       <div class="metric-card"><div class="metric-label">Sunrise</div><div class="metric-value" style="font-size:14px">${s.sunTimes.sunriseStr||'--'}</div></div>
       <div class="metric-card"><div class="metric-label">Window</div><div class="metric-value" style="font-size:13px">${srWinFrom}–${srWinTo}</div></div>`;
+    ambientWeather = `${fmtTemp(w.srT)} · Wind ${Math.round(w.srWD)} mph`;
   } else if (currentTab==='sunset') {
     const ssWinFrom = formatISOTimeStr_offset(s.sunTimes.sunsetStr, -90);
     const ssWinTo   = formatISOTimeStr_offset(s.sunTimes.sunsetStr,  45);
@@ -1021,22 +1054,25 @@ function renderDetail(day, locType) {
       <div class="metric-card"><div class="metric-label">Humidity</div><div class="metric-value">${Math.round(w.ssRH)}<span class="metric-unit">%</span></div></div>
       <div class="metric-card"><div class="metric-label">Sunset</div><div class="metric-value" style="font-size:14px">${s.sunTimes.sunsetStr||'--'}</div></div>
       <div class="metric-card"><div class="metric-label">Window</div><div class="metric-value" style="font-size:13px">${ssWinFrom}–${ssWinTo}</div></div>`;
+    ambientWeather = `${fmtTemp(w.ssT)} · Wind ${Math.round(w.ssWD)} mph`;
   } else if (currentTab==='stars') {
     metrics = `
       <div class="metric-card"><div class="metric-label">Moon</div><div class="metric-value" style="font-size:14px">${s.moonBadge.emoji} ${Math.round(s.moonBadge.fraction*100)}<span class="metric-unit">%</span></div></div>
       <div class="metric-card"><div class="metric-label">Dark window</div><div class="metric-value" style="font-size:14px">${s.moonFreeHours.toFixed(1)}<span class="metric-unit">h</span></div></div>
       <div class="metric-card"><div class="metric-label">Best 4h clouds</div><div class="metric-value">${Math.round(s.clearStretch.bestAvg)}<span class="metric-unit">%</span></div></div>
       <div class="metric-card"><div class="metric-label">Humidity</div><div class="metric-value">${Math.round(w.starsRH)}<span class="metric-unit">%</span></div></div>
-      <div class="metric-card"><div class="metric-label">Dew spread</div><div class="metric-value">${w.spread.toFixed(1)}<span class="metric-unit">°C</span></div></div>
+      <div class="metric-card"><div class="metric-label">Dew spread</div><div class="metric-value">${fmtSpread(w.spread)}</div></div>
       <div class="metric-card"><div class="metric-label">Dark starts</div><div class="metric-value" style="font-size:13px">${fmtTime(s.sunTimes.nightStart)}</div></div>`;
+    ambientWeather = `${fmtTemp(w.starsT)} · Wind ${Math.round(w.starsWD)} mph`;
   } else {
     metrics = `
       <div class="metric-card"><div class="metric-label">Low clouds</div><div class="metric-value">${Math.round(w.fgLC)}<span class="metric-unit">%</span></div></div>
       <div class="metric-card"><div class="metric-label">Humidity</div><div class="metric-value">${Math.round(w.fgRH)}<span class="metric-unit">%</span></div></div>
       <div class="metric-card"><div class="metric-label">Wind</div><div class="metric-value">${Math.round(w.fgWD)}<span class="metric-unit"> mph</span></div></div>
-      <div class="metric-card"><div class="metric-label">Temp</div><div class="metric-value">${Math.round(w.fgT*9/5+32)}<span class="metric-unit">°F</span></div></div>
-      <div class="metric-card"><div class="metric-label">Dewpoint</div><div class="metric-value">${Math.round(w.fgDP*9/5+32)}<span class="metric-unit">°F</span></div></div>
-      <div class="metric-card"><div class="metric-label">D-P spread</div><div class="metric-value">${(w.fgT-w.fgDP).toFixed(1)}<span class="metric-unit">°C</span></div></div>`;
+      <div class="metric-card"><div class="metric-label">Temp</div><div class="metric-value" style="font-size:15px">${fmtTemp(w.fgT)}</div></div>
+      <div class="metric-card"><div class="metric-label">Dewpoint</div><div class="metric-value" style="font-size:15px">${fmtTemp(w.fgDP)}</div></div>
+      <div class="metric-card"><div class="metric-label">D-P spread</div><div class="metric-value">${fmtSpread(w.fgT - w.fgDP)}</div></div>`;
+    ambientWeather = `${fmtTemp(w.fgT)} · Wind ${Math.round(w.fgWD)} mph · Dew ${fmtTemp(w.fgDP)}`;
   }
 
   document.getElementById('detail-panel').innerHTML = `
@@ -1050,6 +1086,7 @@ function renderDetail(day, locType) {
         </div>
       </div>
       <div class="metric-grid">${metrics}</div>
+      ${ambientWeather ? '<div style="font-size:11px;color:var(--text-secondary);margin-bottom:8px;padding:0 2px">' + ambientWeather + '</div>' : ''}
       <div class="badges-row">${badges.map(([t,tc,bg])=>`<span class="badge" style="background:${bg};color:${tc}">${t}</span>`).join('')}</div>
       <div class="verdict" style="background:${bg};color:${tc}">${verdict}</div>
       ${nightLabel ? `<div class="night-label">📅 ${nightLabel}</div>` : ''}
