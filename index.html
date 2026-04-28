@@ -1107,7 +1107,7 @@ async function fetchForecast(lat, lon) {
       + `&hourly=temperature_2m,dewpoint_2m,relativehumidity_2m,precipitation,`
       + `cloudcover_low,cloudcover_mid,cloudcover_high,windspeed_10m`
       + `&temperature_unit=celsius&windspeed_unit=mph&forecast_days=8`
-      + `&timezone=America%2FLos_Angeles`;
+      + `&timezone=auto`;
     const res = await fetch(url);
     if (!res.ok) throw new Error('API error');
     const json = await res.json();
