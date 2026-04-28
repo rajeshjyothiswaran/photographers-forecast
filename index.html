@@ -362,30 +362,44 @@ const SunCalc = (() => {
     return { altitude: h };
   }
 
+  function solarMeanAnomaly(d) { return rad*(357.5291 + 0.98560028*d); }
+  function eclipticLongitude(M) {
+    const C = rad*(1.9148*sin(M) + 0.02*sin(2*M) + 0.0003*sin(3*M));
+    return M + C + rad*102.9372 + PI;
+  }
+  function sunDeclination(L) { return asin(sin(L)*sin(rad*23.4397)); }
+  function julianCycle(d, lw) { return Math.round(d - 0.0009 - lw/(2*PI)); }
+  function approxTransit(Ht, lw, n) { return 0.0009 + (Ht+lw)/(2*PI) + n; }
+  function solarTransitJ(ds, M, L) { return J2000 + ds + 0.0053*sin(M) - 0.0069*sin(2*L); }
+  function hourAngleForAlt(h, phi, dec) {
+    const cosH = (sin(h) - sin(phi)*sin(dec)) / (cos(phi)*cos(dec));
+    return acos(Math.max(-1, Math.min(1, cosH)));
+  }
+  function getSetJFor(h, lw, phi, dec, n, M, L) {
+    const w  = hourAngleForAlt(h, phi, dec);
+    const ds = approxTransit(w, lw, n);
+    return solarTransitJ(ds, M, L);
+  }
+
   function getSunTimes(date, lat, lng) {
-    const lw=rad*-lng, phi=rad*lat, d=toDays(date);
-    const n=Math.round(d-0.009999-lng/360), ds=n+0.0053*sin(rad*(357.5291+0.98560028*n)) - 0.0069*sin(2*rad*(280.4665+0.9856474*n));
-    const M=rad*(357.5291 + 0.98560028*ds);
-    const L=rad*(280.4665 + 0.9856474*ds) + rad*1.9148*sin(M) + rad*0.02*sin(2*M);
-    const dec=declination(L,0);
-    const Jnoon = J2000 + ds + 0.0053*sin(M) - 0.0069*sin(2*L);
-
-    function getSetJ(h) {
-      const w=acos((sin(h)-sin(phi)*sin(dec))/(cos(phi)*cos(dec)));
-      const a=atan(sin(dec), cos(dec)*cos(w)-sin(phi)*(1/cos(w)));  // not used but kept
-      return Jnoon + (acos((sin(h) - sin(phi)*sin(dec))/(cos(phi)*cos(dec))))/(2*PI);
-    }
-
-    const Jrise = Jnoon - (getSetJ(-0.833*rad) - Jnoon);
-    const Jset  = getSetJ(-0.833*rad);
-    const JastDawn = Jnoon - (getSetJ(-18*rad) - Jnoon);
-    const JastDusk = getSetJ(-18*rad);
-
+    const noon = new Date(Date.UTC(date.getFullYear(), date.getMonth(), date.getDate(), 12));
+    const lw = rad*-lng, phi = rad*lat;
+    const d  = toDays(noon);
+    const n  = julianCycle(d, lw);
+    const ds = approxTransit(0, lw, n);
+    const M  = solarMeanAnomaly(ds);
+    const L  = eclipticLongitude(M);
+    const dec = sunDeclination(L);
+    const Jnoon = solarTransitJ(ds, M, L);
+    const Jset  = getSetJFor(rad*-0.833, lw, phi, dec, n, M, L);
+    const Jrise = Jnoon - (Jset - Jnoon);
+    const Jdusk = getSetJFor(rad*-18, lw, phi, dec, n, M, L);
+    const Jdawn = Jnoon - (Jdusk - Jnoon);
     return {
       sunrise:    fromJulian(Jrise),
       sunset:     fromJulian(Jset),
-      nightStart: fromJulian(JastDusk),   // astronomical dusk — true darkness begins
-      nightEnd:   fromJulian(JastDawn),   // astronomical dawn — darkness ends
+      nightStart: fromJulian(Jdusk),
+      nightEnd:   fromJulian(Jdawn),
     };
   }
 
