@@ -588,6 +588,7 @@ function selectSearchResult(lat, lon, name, detail) {
   document.getElementById('searchResults').innerHTML = '';
   activeLocIdx = -1;
   renderLocGrid();
+  pushState(parseFloat(lat), parseFloat(lon), customLocName);
   fetchForecast(parseFloat(lat), parseFloat(lon));
 }
 
@@ -598,6 +599,7 @@ function fetchCustom() {
   customLocName = `${lat.toFixed(3)}, ${lon.toFixed(3)}`;
   activeLocIdx = -1;
   renderLocGrid();
+  pushState(lat, lon, customLocName);
   fetchForecast(lat, lon);
 }
 
@@ -617,6 +619,7 @@ function selectLoc(i) {
   document.getElementById('citySearch').value = '';
   document.getElementById('searchResults').innerHTML = '';
   renderLocGrid();
+  pushState(LOCATIONS[i].lat, LOCATIONS[i].lon, LOCATIONS[i].name);
   fetchForecast(LOCATIONS[i].lat, LOCATIONS[i].lon);
 }
 
@@ -669,15 +672,53 @@ function bestClearStretch(lclouds, mclouds, hclouds, allTs, fromMs, toMs, hoursN
   return { bestAvg: best, windowHrs: hours.length };
 }
 
-function computeScores(dayDate, locType, forecastData, lat, lon) {
-  const { ts, lclouds, mclouds, hclouds, rh, dewpoint, temp, precip, windSpeed } = forecastData;
+function isoTimeToMs(isoStr, dayTs) {
+  // Extract HH:MM from "2026-04-28T20:07" and find the matching hourly timestamp
+  // dayTs is any timestamp from the same day in the forecast data
+  if (!isoStr) return null;
+  const timePart = isoStr.split('T')[1];
+  if (!timePart) return null;
+  const [h, m] = timePart.split(':').map(Number);
+  // Anchor to the day's midnight by finding the 00:00 timestamp
+  const d = new Date(dayTs);
+  // Round down to midnight of that day using the ts values
+  // Since timestamps are local (timezone=auto), we can use getHours() directly
+  const midnight = new Date(d);
+  midnight.setHours(0, 0, 0, 0);
+  return midnight.getTime() + h*3600000 + m*60000;
+}
 
-  // Get sun times for this day
+function computeScores(dayDate, locType, forecastData, lat, lon) {
+  const { ts, lclouds, mclouds, hclouds, rh, dewpoint, temp, precip, windSpeed,
+          sunriseLookup, sunsetLookup } = forecastData;
+
+  // Use Open-Meteo sunrise/sunset strings (location-local timezone)
+  const dateKey = `${dayDate.getFullYear()}-${String(dayDate.getMonth()+1).padStart(2,'0')}-${String(dayDate.getDate()).padStart(2,'0')}`;
+  const srStr = sunriseLookup && sunriseLookup[dateKey];
+  const ssStr = sunsetLookup  && sunsetLookup[dateKey];
+
+  // Find a reference timestamp for this day from the forecast data
+  const dayRef = ts.find(t => {
+    const d = new Date(t);
+    return d.getFullYear() === dayDate.getFullYear() &&
+           d.getMonth()    === dayDate.getMonth() &&
+           d.getDate()     === dayDate.getDate();
+  }) || dayDate.getTime();
+
+  // Convert ISO time strings to ms using the local day anchor
+  const srMsApi = isoTimeToMs(srStr, dayRef);
+  const ssMsApi = isoTimeToMs(ssStr, dayRef);
+
+  // SunCalc still used for astronomical twilight only
   const sunTimes = SunCalc.getSunTimes(dayDate, lat, lon);
-  const srMs = sunTimes.sunrise.getTime();
-  const ssMs = sunTimes.sunset.getTime();
-  const nightStartMs = sunTimes.nightStart.getTime();  // astro dusk
-  const nightEndMs   = sunTimes.nightEnd.getTime();    // astro dawn next morning
+  const srMs = srMsApi || sunTimes.sunrise.getTime();
+  const ssMs = ssMsApi || sunTimes.sunset.getTime();
+  const nightStartMs = sunTimes.nightStart.getTime();
+  const nightEndMs   = sunTimes.nightEnd.getTime();
+
+  // Store display times — format the ISO string directly for display
+  sunTimes.sunriseStr = srStr ? formatISOTimeStr(srStr) : fmtTime(sunTimes.sunrise);
+  sunTimes.sunsetStr  = ssStr ? formatISOTimeStr(ssStr) : fmtTime(sunTimes.sunset);
 
   // Sunrise window: 45 min before to 75 min after sunrise
   const srFrom = srMs - 45*60000;
@@ -952,21 +993,25 @@ function renderDetail(day, locType) {
   // Metric grid — show window-relevant data
   let metrics = '';
   if (currentTab==='sunrise') {
+    const srWinFrom = formatISOTimeStr_offset(s.sunTimes.sunriseStr, -45);
+    const srWinTo   = formatISOTimeStr_offset(s.sunTimes.sunriseStr,  75);
     metrics = `
       <div class="metric-card"><div class="metric-label">Low clouds</div><div class="metric-value">${Math.round(w.srLC)}<span class="metric-unit">%</span></div></div>
       <div class="metric-card"><div class="metric-label">Mid clouds</div><div class="metric-value">${Math.round(w.srMC)}<span class="metric-unit">%</span></div></div>
       <div class="metric-card"><div class="metric-label">High clouds</div><div class="metric-value">${Math.round(w.srHC)}<span class="metric-unit">%</span></div></div>
       <div class="metric-card"><div class="metric-label">Humidity</div><div class="metric-value">${Math.round(w.srRH)}<span class="metric-unit">%</span></div></div>
-      <div class="metric-card"><div class="metric-label">Sunrise</div><div class="metric-value" style="font-size:14px">${fmtTime(s.sunTimes.sunrise)}<span class="metric-unit"> AM</span></div></div>
-      <div class="metric-card"><div class="metric-label">Window</div><div class="metric-value" style="font-size:13px">${fmtTime(new Date(s.sunTimes.sunrise.getTime()-45*60000))}–${fmtTime(new Date(s.sunTimes.sunrise.getTime()+75*60000))}</div></div>`;
+      <div class="metric-card"><div class="metric-label">Sunrise</div><div class="metric-value" style="font-size:14px">${s.sunTimes.sunriseStr||'--'}</div></div>
+      <div class="metric-card"><div class="metric-label">Window</div><div class="metric-value" style="font-size:13px">${srWinFrom}–${srWinTo}</div></div>`;
   } else if (currentTab==='sunset') {
+    const ssWinFrom = formatISOTimeStr_offset(s.sunTimes.sunsetStr, -90);
+    const ssWinTo   = formatISOTimeStr_offset(s.sunTimes.sunsetStr,  45);
     metrics = `
       <div class="metric-card"><div class="metric-label">Low clouds</div><div class="metric-value">${Math.round(w.ssLC)}<span class="metric-unit">%</span></div></div>
       <div class="metric-card"><div class="metric-label">Mid clouds</div><div class="metric-value">${Math.round(w.ssMC)}<span class="metric-unit">%</span></div></div>
       <div class="metric-card"><div class="metric-label">High clouds</div><div class="metric-value">${Math.round(w.ssHC)}<span class="metric-unit">%</span></div></div>
       <div class="metric-card"><div class="metric-label">Humidity</div><div class="metric-value">${Math.round(w.ssRH)}<span class="metric-unit">%</span></div></div>
-      <div class="metric-card"><div class="metric-label">Sunset</div><div class="metric-value" style="font-size:14px">${fmtTime(s.sunTimes.sunset)}<span class="metric-unit"> PM</span></div></div>
-      <div class="metric-card"><div class="metric-label">Window</div><div class="metric-value" style="font-size:13px">${fmtTime(new Date(s.sunTimes.sunset.getTime()-90*60000))}–${fmtTime(new Date(s.sunTimes.sunset.getTime()+45*60000))}</div></div>`;
+      <div class="metric-card"><div class="metric-label">Sunset</div><div class="metric-value" style="font-size:14px">${s.sunTimes.sunsetStr||'--'}</div></div>
+      <div class="metric-card"><div class="metric-label">Window</div><div class="metric-value" style="font-size:13px">${ssWinFrom}–${ssWinTo}</div></div>`;
   } else if (currentTab==='stars') {
     metrics = `
       <div class="metric-card"><div class="metric-label">Moon</div><div class="metric-value" style="font-size:14px">${s.moonBadge.emoji} ${Math.round(s.moonBadge.fraction*100)}<span class="metric-unit">%</span></div></div>
@@ -1017,6 +1062,31 @@ function renderDetail(day, locType) {
 function fmtTime(date) {
   if (!date || isNaN(date.getTime())) return '--:--';
   return date.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit', hour12: true });
+}
+
+// Format "2026-04-28T20:07" → "8:07 PM"
+function formatISOTimeStr(isoStr) {
+  if (!isoStr) return '--:--';
+  const timePart = isoStr.split('T')[1];
+  if (!timePart) return '--:--';
+  let [h, m] = timePart.split(':').map(Number);
+  const ampm = h >= 12 ? 'PM' : 'AM';
+  h = h % 12 || 12;
+  return `${h}:${String(m).padStart(2,'0')} ${ampm}`;
+}
+
+// Offset a time ISO string by +/- minutes and format
+function formatISOTimeStr_offset(isoStr, offsetMins) {
+  if (!isoStr) return '--:--';
+  const timePart = isoStr.split('T')[1];
+  if (!timePart) return '--:--';
+  const [h, m] = timePart.split(':').map(Number);
+  const totalMins = h*60 + m + offsetMins;
+  const newH = Math.floor(((totalMins % 1440) + 1440) % 1440 / 60);
+  const newM = ((totalMins % 60) + 60) % 60;
+  const ampm = newH >= 12 ? 'PM' : 'AM';
+  const h12 = newH % 12 || 12;
+  return `${h12}:${String(newM).padStart(2,'0')} ${ampm}`;
 }
 
 function buildFeedbackLinks(day, locName, score, label) {
@@ -1106,13 +1176,25 @@ async function fetchForecast(lat, lon) {
     const url = `https://api.open-meteo.com/v1/forecast?latitude=${lat}&longitude=${lon}`
       + `&hourly=temperature_2m,dewpoint_2m,relativehumidity_2m,precipitation,`
       + `cloudcover_low,cloudcover_mid,cloudcover_high,windspeed_10m`
+      + `&daily=sunrise,sunset`
       + `&temperature_unit=celsius&windspeed_unit=mph&forecast_days=8`
       + `&timezone=auto`;
     const res = await fetch(url);
     if (!res.ok) throw new Error('API error');
     const json = await res.json();
     const h = json.hourly;
+    const d = json.daily;
     const toK = c => c+273.15;
+
+    // Store sunrise/sunset as raw ISO strings — Open-Meteo gives local time like "2026-04-28T20:07"
+    // We extract hours/minutes directly rather than converting to Date objects
+    // (avoids browser timezone mismatch when location != browser timezone)
+    const sunriseLookup = {}, sunsetLookup = {};
+    d.time.forEach((dateStr, i) => {
+      sunriseLookup[dateStr] = d.sunrise[i]; // e.g. "2026-04-28T06:20"
+      sunsetLookup[dateStr]  = d.sunset[i];
+    });
+
     forecastData = {
       ts:        h.time.map(t=>new Date(t).getTime()),
       lclouds:   h.cloudcover_low,
@@ -1122,12 +1204,59 @@ async function fetchForecast(lat, lon) {
       dewpoint:  h.dewpoint_2m.map(toK),
       temp:      h.temperature_2m.map(toK),
       precip:    h.precipitation,
-      windSpeed: h.windspeed_10m
+      windSpeed: h.windspeed_10m,
+      sunriseLookup,
+      sunsetLookup,
     };
     renderDays();
   } catch(e) {
     document.getElementById('day-grid').innerHTML = `<div class="status error-msg" style="grid-column:1/-1">Could not load forecast data. Check your internet connection and try again.</div>`;
   }
+}
+
+// Parse "2026-04-28T06:20" as a local-time Date (not UTC)
+// Open-Meteo returns times in the location's local timezone without offset suffix
+function parseLocalISOTime(str) {
+  if (!str) return null;
+  const [datePart, timePart] = str.split('T');
+  const [y, mo, d] = datePart.split('-').map(Number);
+  const [h, m] = (timePart || '00:00').split(':').map(Number);
+  return new Date(y, mo-1, d, h, m);
+}
+
+// ── URL state persistence ────────────────────────────────────────────────────
+function pushState(lat, lon, name) {
+  const params = new URLSearchParams({ lat: lat.toFixed(4), lon: lon.toFixed(4), name });
+  history.replaceState(null, '', '?' + params.toString());
+}
+
+function loadStateFromURL() {
+  const params = new URLSearchParams(window.location.search);
+  const lat  = parseFloat(params.get('lat'));
+  const lon  = parseFloat(params.get('lon'));
+  const name = params.get('name');
+  if (!isNaN(lat) && !isNaN(lon) && name) {
+    // Check if it matches a preset location
+    const presetIdx = LOCATIONS.findIndex(l =>
+      Math.abs(l.lat - lat) < 0.01 && Math.abs(l.lon - lon) < 0.01
+    );
+    if (presetIdx >= 0) {
+      activeLocIdx = presetIdx;
+    } else {
+      activeLocIdx = -1;
+      customLocName = name;
+      document.getElementById('citySearch').value = name;
+    }
+    renderLocGrid();
+    fetchForecast(lat, lon);
+    return true;
+  }
+  return false;
+}
+
+renderLocGrid();
+if (!loadStateFromURL()) {
+  fetchForecast(LOCATIONS[0].lat, LOCATIONS[0].lon);
 }
 
 function toggleMailPicker(btn, e) {
@@ -1144,9 +1273,6 @@ function closePicker() {
 
 // Close picker when clicking anywhere else
 document.addEventListener('click', () => closePicker());
-
-renderLocGrid();
-fetchForecast(LOCATIONS[0].lat, LOCATIONS[0].lon);
 </script>
 </body>
 </html>
