@@ -356,7 +356,8 @@
   <footer>
     Forecast: <a href="https://open-meteo.com" target="_blank">Open-Meteo</a> ·
     © <a href="https://www.openstreetmap.org/copyright" target="_blank">OpenStreetMap contributors</a> ·
-    Built for <a href="https://rjfineart.com" target="_blank">LadyBugFarm Images</a><br>
+    Built for <a href="https://rjfineart.com" target="_blank">LadyBugFarm Images</a> ·
+    <a href="guide.html" target="_blank">User guide</a><br>
     <span style="opacity:0.7">Scores are model-based estimates — real skies vary. Always check conditions again the evening before. Not liable for forecast errors.</span>
   </footer>
 </div>
@@ -1540,7 +1541,8 @@ function renderDetail(day, locType) {
       <div class="metric-card"><div class="metric-label">Humidity</div><div class="metric-value">${safeRound(w.starsRH)}<span class="metric-unit">%</span></div></div>
       <div class="metric-card" style="border:0.5px solid ${mwColor}"><div class="metric-label">🌌 MW window</div><div class="metric-value" style="font-size:12px;color:${mwValColor}">${mwStatus}</div></div>
       <div class="metric-card"><div class="metric-label">🌌 Peak alt</div><div class="metric-value">${mwAlt}</div></div>
-      <div class="metric-card"><div class="metric-label">🌌 Season</div><div class="metric-value" style="font-size:12px">${seasonLabel}</div></div>`;
+      <div class="metric-card"><div class="metric-label">🌌 Season</div><div class="metric-value" style="font-size:12px">${seasonLabel}</div></div>
+      <div class="metric-card" style="border:0.5px solid ${s.bortleInfo.tc};grid-column:1/-1"><div class="metric-label">Light pollution</div><div class="metric-value" style="font-size:13px;color:${s.bortleInfo.tc}">${s.bortleInfo.label} · ${s.bortleInfo.desc}</div></div>`;
     ambientWeather = `Sunset ${s.sunTimes.sunsetStr} · Dark ${fmtTime(s.sunTimes.nightStart)} · Wind ${Math.round(w.starsWD)} mph`;
   } else {
     metrics = `
