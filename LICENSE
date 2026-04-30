@@ -1,0 +1,32 @@
+Copyright (c) 2026 Rajesh Jyothiswaran / LadyBugFarm Images
+All rights reserved.
+
+This software and associated documentation files (the "Software") are the
+exclusive property of Rajesh Jyothiswaran / LadyBugFarm Images.
+
+No part of the Software may be reproduced, distributed, transmitted, displayed,
+published, modified, or used in any form or by any means — electronic, mechanical,
+photocopying, recording, or otherwise — without the prior written permission of
+the copyright owner.
+
+Unauthorized use, copying, modification, or distribution of this Software,
+in whole or in part, is strictly prohibited and may result in civil and
+criminal penalties under applicable copyright law.
+
+For licensing inquiries, contact: rajesh@rjfineart.com
+
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+COPYRIGHT OWNER BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER
+IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN
+CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
+
+Third-party data and libraries used in this project are subject to their own
+licenses and terms:
+  - Open-Meteo (https://open-meteo.com) — CC BY 4.0
+  - OpenStreetMap Nominatim (https://nominatim.openstreetmap.org) — ODbL
+  - NOAA Tides & Currents (https://tidesandcurrents.noaa.gov) — Public Domain
+  - TideCheck (https://tidecheck.com) — Commercial API, terms at tidecheck.com/terms
+  - SunCalc by Vladimir Agafonkin — BSD 2-Clause
+  - TICON-4 tide data (via TideCheck) — CC BY 4.0
