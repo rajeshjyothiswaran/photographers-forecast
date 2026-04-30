@@ -220,11 +220,75 @@
   .mail-picker a:last-child { border-bottom: none; }
   .mail-picker a:hover { background: var(--bg-secondary); }
 
-  .shimmer { background: var(--bg-secondary); border-radius: var(--radius-lg); height: 106px; animation: pulse 1.4s ease-in-out infinite; }
+  .fav-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(130px, 1fr)); gap: 8px; margin-bottom: 1.25rem; }
+  .fav-btn {
+    padding: 9px 11px 8px; border-radius: var(--radius-lg);
+    border: 0.5px solid var(--border); background: var(--bg);
+    cursor: pointer; text-align: left; color: var(--text);
+    transition: border-color 0.15s; position: relative;
+  }
+  .fav-btn:hover { border-color: var(--border-secondary); }
+  .fav-btn.active { border: 1.5px solid var(--blue); background: var(--bg-secondary); }
+  .fav-name { font-size: 12px; font-weight: 500; margin-bottom: 2px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .fav-detail { font-size: 10px; color: var(--text-secondary); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .fav-remove {
+    position: absolute; top: 4px; right: 6px;
+    font-size: 11px; color: var(--text-secondary); background: none;
+    border: none; cursor: pointer; padding: 2px; line-height: 1;
+    opacity: 0; transition: opacity 0.15s;
+  }
+  .fav-btn:hover .fav-remove { opacity: 1; }
+  .save-fav-btn {
+    display: inline-flex; align-items: center; gap: 5px;
+    padding: 5px 11px; border-radius: var(--radius-md);
+    border: 0.5px solid var(--border-secondary); background: transparent;
+    color: var(--text-secondary); font-size: 11px; cursor: pointer;
+    transition: background 0.15s, color 0.15s; margin-top: 6px;
+  }
+  .save-fav-btn:hover { background: var(--bg-secondary); color: var(--text); }
+  .save-fav-btn.saved { color: var(--green-text); border-color: var(--green); }
+
+  .loc-section-label { font-size: 10px; color: var(--text-secondary); margin-bottom: 6px; letter-spacing: 0.04em; text-transform: uppercase; }
   @keyframes pulse { 0%,100%{opacity:1} 50%{opacity:0.5} }
 
   .status { padding: 2rem; text-align: center; color: var(--text-secondary); font-size: 13px; }
   .error-msg { color: var(--coral-text); }
+
+  .hourly-panel {
+    margin-top: 8px; border: 0.5px solid var(--border);
+    border-radius: var(--radius-md); overflow: hidden;
+  }
+  .hourly-toggle {
+    width: 100%; padding: 8px 12px; background: var(--bg-secondary);
+    border: none; color: var(--text-secondary); font-size: 11px;
+    cursor: pointer; text-align: left; display: flex; justify-content: space-between;
+    align-items: center;
+  }
+  .hourly-toggle:hover { color: var(--text); }
+  .hourly-table { width: 100%; border-collapse: collapse; font-size: 11px; }
+  .hourly-table th {
+    padding: 5px 8px; text-align: right; font-weight: 500;
+    color: var(--text-secondary); background: var(--bg-secondary);
+    border-bottom: 0.5px solid var(--border); font-size: 10px;
+  }
+  .hourly-table th:first-child { text-align: left; }
+  .hourly-table td {
+    padding: 4px 8px; text-align: right; border-bottom: 0.5px solid var(--border);
+    color: var(--text);
+  }
+  .hourly-table td:first-child { text-align: left; color: var(--text-secondary); font-size: 10px; }
+  .hourly-table tr:last-child td { border-bottom: none; }
+  .hourly-table tr.window-row td { background: var(--blue-bg); }
+  .hourly-table tr.window-row td:first-child { color: var(--blue-text); font-weight: 500; }
+  .cloud-chip {
+    display: inline-block; min-width: 28px; padding: 1px 5px;
+    border-radius: 3px; font-size: 10px; font-weight: 500; text-align: center;
+  }
+  .aqi-note {
+    margin-top: 8px; padding: 8px 13px; border-radius: var(--radius-md);
+    font-size: 12px; line-height: 1.5; border-left: 3px solid var(--amber);
+    background: var(--amber-bg); color: var(--amber-text);
+  }
 
   footer { margin-top: 2rem; text-align: center; font-size: 11px; color: var(--text-secondary); }
   footer a { color: var(--blue-text); text-decoration: none; }
@@ -239,9 +303,14 @@
       <button id="btnC" onclick="setUnit('C')" style="padding:4px 10px;border:none;background:transparent;color:var(--text-secondary);cursor:pointer;font-size:12px;font-weight:400">°C</button>
     </div>
   </div>
-  <p class="subtitle">Sunrise color · Sunset color · Clear stars · Fog potential — any location</p>
+  <p class="subtitle">Plan your shoot — forecast scoring for golden hour color, fog &amp; dark skies · scores 0–100</p>
 
+  <div class="loc-section-label">Quick picks</div>
   <div class="loc-grid" id="locGrid"></div>
+  <div id="favSection" style="display:none">
+    <div class="loc-section-label" style="margin-top:10px">My locations</div>
+    <div class="fav-grid" id="favGrid"></div>
+  </div>
 
   <div class="search-section">
     <div class="search-row">
@@ -260,6 +329,9 @@
       </label>
     </div>
     <div id="searchResults"></div>
+    <div id="saveFavRow" style="display:none">
+      <button class="save-fav-btn" id="saveFavBtn" onclick="saveCurrentAsFav()">☆ Save to My Locations</button>
+    </div>
   </div>
 
   <details>
@@ -284,7 +356,8 @@
   <footer>
     Forecast: <a href="https://open-meteo.com" target="_blank">Open-Meteo</a> ·
     © <a href="https://www.openstreetmap.org/copyright" target="_blank">OpenStreetMap contributors</a> ·
-    Built for <a href="https://rjfineart.com" target="_blank">LadyBugFarm Images</a>
+    Built for <a href="https://rjfineart.com" target="_blank">LadyBugFarm Images</a><br>
+    <span style="opacity:0.7">Scores are model-based estimates — real skies vary. Always check conditions again the evening before. Not liable for forecast errors.</span>
   </footer>
 </div>
 
@@ -421,49 +494,157 @@ const SunCalc = (() => {
 })();
 
 // ── Galactic Core visibility ─────────────────────────────────────────────────
-// Returns the best MW shoot window for a given date/lat, or null if not visible.
-// Core RA ~17h45m, Dec ~-29°. We compute its rise/transit/set times roughly.
-function getMilkyWayWindow(date, lat) {
-  // Galactic Core: RA=17h45m, Dec=−29°
-  // Calculate latitude-aware season using spherical astronomy
+// Galactic Core: RA=17h45m (266.25°), Dec=−29°
+// For a given date/lat, returns whether the core is visible during dark hours
+// and what the practical shoot window is.
+function getMilkyWayWindow(date, lat, moonTimes) {
   const DEC_CORE = -29.0 * Math.PI / 180;
-  const H_MIN    = 10.0  * Math.PI / 180;  // minimum useful altitude
+  const H_MIN    = 10.0  * Math.PI / 180;   // minimum useful altitude
   const LAT      = lat   * Math.PI / 180;
 
-  // Max altitude of core at transit
+  // Max altitude at transit — fixed for this latitude
   const maxAlt = Math.asin(Math.sin(LAT)*Math.sin(DEC_CORE) + Math.cos(LAT)*Math.cos(DEC_CORE));
+  const maxAltDeg = maxAlt * 180 / Math.PI;
 
   // Core never clears 10° — not shootable at this latitude
-  if (maxAlt < H_MIN) return { visible: false, season: 'off', maxAlt: Math.degrees ? Math.degrees(maxAlt) : maxAlt*180/Math.PI };
+  if (maxAlt < H_MIN) return { visible: false, season: 'off', maxAlt: maxAltDeg, shootable: false };
 
-  // Hour angle when core is at h_min
+  // Hour angle when core is at h_min — how many hours either side of transit it's above 10°
   const cosH = (Math.sin(H_MIN) - Math.sin(LAT)*Math.sin(DEC_CORE)) / (Math.cos(LAT)*Math.cos(DEC_CORE));
   const H_hrs = Math.abs(cosH) <= 1 ? Math.acos(Math.max(-1, Math.min(1, cosH))) * 180/Math.PI / 15 : 12;
 
-  // Core transits local midnight ~June 15 (DOY 166) — consistent across latitudes
+  // Core RA = 17h45m = 17.75h. Sidereal day ≈ 23h56m.
+  // Core transits when LST = 17.75h. LST at midnight ≈ solar midnight RA of sun + 12h.
+  // Sun's RA on date (approx): cycles through 0-24h over the year.
+  // Simpler: core transits local midnight around June 15 (DOY 166).
+  // For other dates, transit time shifts ~2min earlier per day (4min/day sidereal drift).
   const CORE_MIDNIGHT_DOY = 166;
-  const seasonHalfDays = Math.round(H_hrs * 15);  // ~15 days per hour of HA
-  const firstDOY = CORE_MIDNIGHT_DOY - seasonHalfDays - 3;  // small buffer for pre-dawn visibility
-  const lastDOY  = CORE_MIDNIGHT_DOY + seasonHalfDays;
-
   const dayOfYear = Math.floor((date - new Date(date.getFullYear(),0,0)) / 86400000);
+  const daysFromPeak = dayOfYear - CORE_MIDNIGHT_DOY;
 
-  if (dayOfYear < firstDOY || dayOfYear > lastDOY) return { visible: false, season: 'off' };
+  // Transit time in hours after local midnight (negative = before midnight)
+  // Each day away from peak shifts transit by ~4 minutes (sidereal)
+  const transitHour = -daysFromPeak * (4/60);  // hours after midnight
 
-  // Season phase — derived from position within the window
-  // Pre-dawn: first 40% of season (core rises before midnight)
-  // Prime:    middle 30% (core up most of night)
-  // Early-eve:next 20% (core sets early, shoot right after dark)
-  // Closing:  last 10% (very short window)
-  const progress = (dayOfYear - firstDOY) / (lastDOY - firstDOY); // 0→1
+  // Rise and set times (hours after midnight, can be negative or >24)
+  const riseHour = transitHour - H_hrs;
+  const setHour  = transitHour + H_hrs;
+
+  // Normalize to 24+ hour frame (darkStart=22=10PM, darkEnd=28=4AM)
+  // riseHour/setHour are hours after midnight; negative = previous evening
+  // AM hours (0-12) need +24 to be in same frame as evening darkStart=22
+  // e.g. 0.06h (12:04 AM) → 24.06h, 6.2h (6:12 AM) → 30.2h
+  // e.g. -1.5h (10:30 PM) → 22.5h
+  let riseH = riseHour;
+  let setH  = setHour;
+
+  // If in early AM (0 to 12), add 24 to put in 24+ frame after midnight
+  if (riseH >= 0 && riseH < 12) riseH += 24;
+  if (setH  >= 0 && setH  < 12) setH  += 24;
+  // If negative (evening before midnight), add 24 to get evening hour
+  if (riseH < 0) riseH += 24;
+  if (setH  < 0) setH  += 24;
+
+  // Dark window constants — 10 PM (22h) to 4 AM next day (28h in 24+ frame)
+  const darkStart = 22;
+  const darkEnd   = 28;
+
+  // Check overlap
+  const overlapStart = Math.max(riseH, darkStart);
+  const overlapEnd   = Math.min(setH,  darkEnd);
+  const darkOverlapHrs = Math.max(0, overlapEnd - overlapStart);
+
+  // Shootable if >1h overlap with dark window
+  const shootable = darkOverlapHrs >= 1;
+
+  if (!shootable) {
+    // Check if it's because we're outside the season entirely
+    const seasonHalfDays = Math.round(H_hrs * 15);
+    const firstDOY = CORE_MIDNIGHT_DOY - seasonHalfDays - 3;
+    const lastDOY  = CORE_MIDNIGHT_DOY + seasonHalfDays;
+    if (dayOfYear < firstDOY || dayOfYear > lastDOY) {
+      return { visible: false, season: 'off', maxAlt: maxAltDeg, shootable: false };
+    }
+    // In season geometrically but core only above horizon during daylight
+    return { visible: false, season: 'daylight', maxAlt: maxAltDeg, shootable: false,
+             note: 'Core above horizon only during daylight hours' };
+  }
+
+  // Format the practical shoot window
+  function fmtH(h) {
+    let hh = ((h % 24) + 24) % 24;
+    let hr = Math.floor(hh);
+    let mn = Math.round((hh - hr) * 60);
+    if (mn === 60) { mn = 0; hr = (hr + 1) % 24; } // handle rollover
+    const ampm = hr >= 12 ? 'PM' : 'AM';
+    const hr12 = hr % 12 || 12;
+    return `${hr12}:${String(mn).padStart(2,'0')} ${ampm}`;
+  }
+
+  // Raw core window (hours in 24+ frame)
+  const coreWindowStart = Math.max(riseH, darkStart);
+  const coreWindowEnd   = Math.min(setH,  darkEnd);
+
+  const windowStart = fmtH(coreWindowStart);
+  const windowEnd   = fmtH(coreWindowEnd);
+
+  // Season label based on transit time
   let season;
-  if      (progress < 0.40) season = 'pre-dawn';
-  else if (progress < 0.70) season = 'evening';
-  else if (progress < 0.90) season = 'early-eve';
-  else                       season = 'closing';
+  if      (transitHour > 2)   season = 'pre-dawn';
+  else if (transitHour > -2)  season = 'evening';
+  else if (transitHour > -4)  season = 'early-eve';
+  else                        season = 'closing';
 
-  return { visible: true, season, maxAlt: maxAlt*180/Math.PI, H_hrs, firstDOY, lastDOY };
+  // Intersect core window with moon-free window
+  let moonFreeStart = darkStart;
+  let moonFreeEnd   = darkEnd;
+
+  if (moonTimes) {
+    // Convert moon rise/set to 24+ hour frame
+    const toH24 = (d) => {
+      if (!d) return null;
+      const h = d.getHours() + d.getMinutes()/60;
+      return h < 12 ? h + 24 : h;  // 5:03 AM → 29.05, 10:30 PM → 22.5
+    };
+    const mRise = moonTimes.alwaysUp   ? darkStart : toH24(moonTimes.rise);
+    const mSet  = moonTimes.alwaysDown ? null      : toH24(moonTimes.set);
+
+    if (moonTimes.alwaysUp) {
+      moonFreeStart = darkEnd; moonFreeEnd = darkEnd; // no moon-free window
+    } else if (moonTimes.alwaysDown) {
+      // full dark window is moon-free, no change
+    } else if (mRise && mRise > darkStart && mRise < darkEnd) {
+      // Moon rises during dark window — moon-free ends at moonrise
+      moonFreeEnd = mRise;
+    } else if (mSet && mSet > darkStart && mSet < darkEnd) {
+      // Moon sets during dark window — moon-free starts at moonset
+      moonFreeStart = mSet;
+    } else if (mRise && mRise <= darkStart && mSet && mSet >= darkEnd) {
+      // Moon up the entire dark window
+      moonFreeStart = darkEnd; moonFreeEnd = darkEnd;
+    }
+    // If moon sets AFTER the dark window ends (e.g. sets at 5:03 AM = 29.05h,
+    // darkEnd = 28h = 4 AM), moon is up the entire night — no moon-free window
+    if (mSet && mSet > darkEnd && (!mRise || mRise <= darkStart)) {
+      moonFreeStart = darkEnd; moonFreeEnd = darkEnd;
+    }
+  }
+
+  // Final window: intersection of core-above-horizon AND moon-free AND dark
+  const shootWindowStart = Math.max(coreWindowStart, moonFreeStart);
+  const shootWindowEnd   = Math.min(coreWindowEnd,   moonFreeEnd);
+  const moonFreeMWHrs    = Math.max(0, shootWindowEnd - shootWindowStart);
+
+  // Moonlit but core visible — still report window but flag it
+  const moonLit = moonFreeMWHrs < darkOverlapHrs * 0.5;
+
+  return { visible: true, shootable: true, season, maxAlt: maxAltDeg, H_hrs,
+           windowStart, windowEnd,                          // full core window (ignoring moon)
+           moonFreeStart: fmtH(shootWindowStart),
+           moonFreeEnd:   fmtH(shootWindowEnd),
+           moonFreeMWHrs, moonLit, darkOverlapHrs };
 }
+
 
 // ── Moon phase label & badge ─────────────────────────────────────────────────
 function moonPhaseBadge(illum) {
@@ -503,7 +684,52 @@ function moonPenalty(fraction) {
   return 60; // near-full — crushing penalty
 }
 
-// ── Locations & state ────────────────────────────────────────────────────────
+// ── Bortle / Light Pollution ─────────────────────────────────────────────────
+// Preset Bortle values for known locations. For custom locations we estimate
+// from population density proxy — not exact but useful ballpark.
+const BORTLE_PRESETS = {
+  'Jenner':        { bortle: 3, label: 'Bortle 3', desc: 'Rural sky', tc: '#0F6E56', bg: '#c8ead8' },
+  'Salt Point SP': { bortle: 2, label: 'Bortle 2', desc: 'Truly dark', tc: '#0F6E56', bg: '#c8ead8' },
+  'Mercuryville':  { bortle: 3, label: 'Bortle 3', desc: 'Rural sky', tc: '#0F6E56', bg: '#c8ead8' },
+  'Geyserville':   { bortle: 4, label: 'Bortle 4', desc: 'Rural/suburban transition', tc: '#BA7517', bg: '#f5e0b5' },
+};
+
+function bortleForLocation(locIdx, locName) {
+  if (locIdx >= 0 && BORTLE_PRESETS[locName]) return BORTLE_PRESETS[locName];
+  // Default for unknown/custom locations — assume suburban
+  return { bortle: 5, label: 'Bortle 5', desc: 'Suburban sky (estimate)', tc: '#BA7517', bg: '#f5e0b5' };
+}
+
+function bortlePenalty(bortle) {
+  // Penalty subtracted from stars score
+  if (bortle <= 2) return 0;
+  if (bortle <= 3) return 5;
+  if (bortle <= 4) return 15;
+  if (bortle <= 5) return 28;
+  if (bortle <= 6) return 42;
+  return 55;
+}
+
+// ── AQI helpers ──────────────────────────────────────────────────────────────
+function aqiLabel(aqi) {
+  if (aqi == null || isNaN(aqi)) return null;
+  if (aqi <= 50)  return { text: `AQI ${aqi} · Good`,           tc: '#0F6E56', bg: '#c8ead8', smoke: false };
+  if (aqi <= 100) return { text: `AQI ${aqi} · Moderate`,       tc: '#BA7517', bg: '#f5e0b5', smoke: false };
+  if (aqi <= 150) return { text: `AQI ${aqi} · Unhealthy (sensitive)`, tc: '#993C1D', bg: '#f5cfc4', smoke: true };
+  if (aqi <= 200) return { text: `AQI ${aqi} · Unhealthy`,      tc: '#993C1D', bg: '#f5cfc4', smoke: true };
+  return                 { text: `AQI ${aqi} · Very unhealthy`, tc: '#993C1D', bg: '#f5cfc4', smoke: true };
+}
+
+function aqiColorNote(aqi) {
+  // Smoke/haze effect on color — low AQI can enhance, high AQI degrades
+  if (aqi == null || isNaN(aqi)) return null;
+  if (aqi <= 50)  return null; // no note needed
+  if (aqi <= 100) return 'Mild haze may add warm tones to sunrise/sunset.';
+  if (aqi <= 150) return 'Smoke haze likely — muted colors, reduced saturation. Deep reds possible near horizon.';
+  return 'Heavy smoke will significantly degrade color quality and visibility.';
+}
+
+
 const LOCATIONS = [
   { name: 'Jenner',        lat: 38.45, lon: -123.12, type: 'coast', typeColor: '#185FA5', typeBg: '#dbeaf8', note: 'Russian River mouth · coastal' },
   { name: 'Salt Point SP', lat: 38.57, lon: -123.33, type: 'coast', typeColor: '#185FA5', typeBg: '#dbeaf8', note: 'Gerstle Cove · rocky coast' },
@@ -628,6 +854,8 @@ function selectSearchResult(lat, lon, name, detail) {
   document.getElementById('searchResults').innerHTML = '';
   activeLocIdx = -1;
   renderLocGrid();
+  renderFavGrid();
+  showSaveFavBtn();
   pushState(parseFloat(lat), parseFloat(lon), customLocName);
   fetchForecast(parseFloat(lat), parseFloat(lon));
 }
@@ -639,6 +867,8 @@ function fetchCustom() {
   customLocName = `${lat.toFixed(3)}, ${lon.toFixed(3)}`;
   activeLocIdx = -1;
   renderLocGrid();
+  renderFavGrid();
+  showSaveFavBtn();
   pushState(lat, lon, customLocName);
   fetchForecast(lat, lon);
 }
@@ -658,9 +888,107 @@ function selectLoc(i) {
   activeLocIdx = i; selectedDay = 0; customLocName = '';
   document.getElementById('citySearch').value = '';
   document.getElementById('searchResults').innerHTML = '';
+  hideSaveFavBtn();
   renderLocGrid();
   pushState(LOCATIONS[i].lat, LOCATIONS[i].lon, LOCATIONS[i].name);
   fetchForecast(LOCATIONS[i].lat, LOCATIONS[i].lon);
+}
+
+// ── Favorites (localStorage) ─────────────────────────────────────────────────
+function loadFavs() {
+  try { return JSON.parse(localStorage.getItem('pf_favs') || '[]'); }
+  catch(e) { return []; }
+}
+
+function saveFavs(favs) {
+  try { localStorage.setItem('pf_favs', JSON.stringify(favs)); } catch(e) {}
+}
+
+function renderFavGrid() {
+  const favs = loadFavs();
+  const section = document.getElementById('favSection');
+  const grid = document.getElementById('favGrid');
+  if (!section || !grid) return;
+  if (!favs.length) { section.style.display = 'none'; return; }
+  section.style.display = 'block';
+  grid.innerHTML = favs.map((f, i) =>
+    `<div class="fav-btn ${activeLocIdx === -(i+10) ? 'active' : ''}" onclick="selectFav(${i})" role="button" tabindex="0">
+      <span class="fav-remove" onclick="removeFav(event,${i})" title="Remove">✕</span>
+      <div class="fav-name">${escStr(f.name)}</div>
+      <div class="fav-detail">${escStr(f.detail || '')}</div>
+    </div>`
+  ).join('');
+}
+
+function selectFav(i) {
+  const favs = loadFavs();
+  const f = favs[i];
+  if (!f) return;
+  activeLocIdx = -(i+10); // unique negative index for favs
+  customLocName = f.name;
+  document.getElementById('citySearch').value = f.name;
+  document.getElementById('searchResults').innerHTML = '';
+  hideSaveFavBtn();
+  renderLocGrid();
+  renderFavGrid();
+  pushState(f.lat, f.lon, f.name);
+  fetchForecast(f.lat, f.lon);
+}
+
+function removeFav(e, i) {
+  e.stopPropagation();
+  const favs = loadFavs();
+  favs.splice(i, 1);
+  saveFavs(favs);
+  if (activeLocIdx === -(i+10)) { activeLocIdx = -1; }
+  renderFavGrid();
+}
+
+function saveCurrentAsFav() {
+  if (!currentLat || !currentLon || !customLocName) return;
+  const favs = loadFavs();
+  // Avoid duplicates
+  if (favs.some(f => Math.abs(f.lat-currentLat)<0.001 && Math.abs(f.lon-currentLon)<0.001)) {
+    const btn = document.getElementById('saveFavBtn');
+    btn.textContent = '✓ Already saved'; btn.classList.add('saved');
+    setTimeout(() => { btn.textContent = '☆ Save to My Locations'; btn.classList.remove('saved'); }, 2000);
+    return;
+  }
+  favs.push({ name: customLocName, detail: '', lat: currentLat, lon: currentLon });
+  saveFavs(favs);
+  renderFavGrid();
+  const btn = document.getElementById('saveFavBtn');
+  btn.textContent = '★ Saved!'; btn.classList.add('saved');
+  setTimeout(() => { btn.textContent = '☆ Save to My Locations'; btn.classList.remove('saved'); }, 2000);
+}
+
+function showSaveFavBtn() {
+  // Only show save button for custom/searched locations (not presets)
+  if (activeLocIdx >= 0) return;
+  const row = document.getElementById('saveFavRow');
+  if (row) row.style.display = 'block';
+}
+
+function hideSaveFavBtn() {
+  const row = document.getElementById('saveFavRow');
+  if (row) row.style.display = 'none';
+}
+
+// ── Golden & Blue hour helpers ────────────────────────────────────────────────
+// Offsets relative to sunrise/sunset (minutes)
+// Blue hour:   civil twilight start → sunrise (morning) / sunset → civil twilight end (evening)
+// Golden hour: sunrise → ~54min after / ~54min before sunset → sunset
+// We approximate civil twilight as 30min before sunrise / after sunset
+function getGoldenBlueHours(sunriseISO, sunsetISO) {
+  if (!sunriseISO || !sunsetISO) return null;
+  const sr = formatISOTimeStr(sunriseISO);
+  const ss = formatISOTimeStr(sunsetISO);
+  return {
+    morningBlue:  { from: formatISOTimeStr_offset(sunriseISO, -30), to: sr },
+    morningGolden:{ from: sr, to: formatISOTimeStr_offset(sunriseISO, 54) },
+    eveningGolden:{ from: formatISOTimeStr_offset(sunsetISO, -54), to: ss },
+    eveningBlue:  { from: ss, to: formatISOTimeStr_offset(sunsetISO, 30) },
+  };
 }
 
 function setTab(tab, el) {
@@ -688,9 +1016,19 @@ function scoreLabel(s) {
 
 // Average hourly values for a set of timestamps (by hour range)
 function avgWindow(arr, allTs, fromMs, toMs) {
+  if (!arr || !allTs) return null;
   const vals = [];
-  allTs.forEach((t,i) => { if (t>=fromMs && t<toMs && arr[i]!=null) vals.push(arr[i]); });
+  allTs.forEach((t,i) => {
+    const v = arr[i];
+    if (t>=fromMs && t<toMs && v!=null && !isNaN(v)) vals.push(v);
+  });
   return vals.length ? vals.reduce((a,b)=>a+b,0)/vals.length : null;
+}
+
+// Safe round — returns '--' for null/NaN, otherwise rounded number string
+function safeRound(v, fallback='--') {
+  if (v == null || isNaN(v)) return fallback;
+  return Math.round(v);
 }
 
 // Find best consecutive N-hour clear stretch in a window
@@ -730,7 +1068,7 @@ function isoTimeToMs(isoStr, dayTs) {
 
 function computeScores(dayDate, locType, forecastData, lat, lon) {
   const { ts, lclouds, mclouds, hclouds, rh, dewpoint, temp, precip, windSpeed,
-          sunriseLookup, sunsetLookup } = forecastData;
+          sunriseLookup, sunsetLookup, aqi } = forecastData;
 
   // Use Open-Meteo sunrise/sunset strings (location-local timezone)
   const dateKey = `${dayDate.getFullYear()}-${String(dayDate.getMonth()+1).padStart(2,'0')}-${String(dayDate.getDate()).padStart(2,'0')}`;
@@ -757,8 +1095,11 @@ function computeScores(dayDate, locType, forecastData, lat, lon) {
   const nightEndMs   = sunTimes.nightEnd.getTime();
 
   // Store display times — format the ISO string directly for display
-  sunTimes.sunriseStr = srStr ? formatISOTimeStr(srStr) : fmtTime(sunTimes.sunrise);
-  sunTimes.sunsetStr  = ssStr ? formatISOTimeStr(ssStr) : fmtTime(sunTimes.sunset);
+  sunTimes.sunriseStr    = srStr ? formatISOTimeStr(srStr) : fmtTime(sunTimes.sunrise);
+  sunTimes.sunsetStr     = ssStr ? formatISOTimeStr(ssStr) : fmtTime(sunTimes.sunset);
+  // Also store raw ISO strings for offset calculations (getGoldenBlueHours needs these)
+  sunTimes.sunriseISOStr = srStr || null;
+  sunTimes.sunsetISOStr  = ssStr || null;
 
   // Sunrise window: 45 min before to 75 min after sunrise
   const srFrom = srMs - 45*60000;
@@ -806,44 +1147,90 @@ function computeScores(dayDate, locType, forecastData, lat, lon) {
   const ssT  = (winAvg(temp,      ssFrom, ssTo) ?? 285) - 273.15;
   const ssWD = winAvg(windSpeed,  ssFrom, ssTo) ?? 8;
 
-  const fgLC = winAvg(lclouds,   fogFrom, fogTo) ?? 30;
-  const fgRH = winAvg(rh,        fogFrom, fogTo) ?? 70;
-  const fgWD = winAvg(windSpeed, fogFrom, fogTo) ?? 8;
-  const fgT  = (winAvg(temp,     fogFrom, fogTo) ?? 285) - 273.15;
-  const fgDP = (winAvg(dewpoint, fogFrom, fogTo) ?? 283) - 273.15;
+  const fgLC = winAvg(lclouds,   fogFrom, fogTo) ?? winAvg(lclouds, fogFrom-3600000, fogTo+3600000) ?? 0;
+  const fgRH = winAvg(rh,        fogFrom, fogTo) ?? winAvg(rh, fogFrom-3600000, fogTo+3600000) ?? 70;
+  const fgWD = winAvg(windSpeed, fogFrom, fogTo) ?? winAvg(windSpeed, fogFrom-3600000, fogTo+3600000) ?? 8;
+  const fgT  = (winAvg(temp,     fogFrom, fogTo) ?? winAvg(temp, fogFrom-3600000, fogTo+3600000) ?? 285) - 273.15;
+  const fgDP = (winAvg(dewpoint, fogFrom, fogTo) ?? winAvg(dewpoint, fogFrom-3600000, fogTo+3600000) ?? 283) - 273.15;
 
   // ── Sunrise score ──
+  // Pattern detection first — these drive both score and verdict
+  const srHighOvercast  = srHC >= 80;                                    // 80-100% cirrus/alto canopy
+  const srBrokenLow     = srLC >= 20 && srLC <= 70;                      // broken low cloud — ideal
+  const srSmoulderZone  = srLC > 40 && srLC <= 75;                       // sweet spot for color
+  const srOvercast      = srLC > 85 && srMC > 70;                        // true overcast — blocks light
+  const srCoastPattern  = locType==='coast' && srLC>=25 && srLC<=80 && srMC<25 && srHC<40; // marine stratus breaking
+  const srPaintersSky   = srHighOvercast && srBrokenLow && srMC < 30;    // high diffuser + broken low = vivid
+  const srCirrusOnly    = srHC >= 60 && srLC < 20 && srMC < 20;         // high cloud only — warm wash
+  const srClear         = srLC < 10 && srMC < 10 && srHC < 20;          // essentially clear
+
   let sunrise = 0;
-  if      (srLC > 40 && srLC <= 75) sunrise += 35;
-  else if (srLC >= 10 && srLC <= 40) sunrise += 28;
-  else if (srLC < 10)               sunrise += 10;
-  else if (srLC > 90)               sunrise -= 15;
+
+  // Low cloud contribution
+  if      (srSmoulderZone)             sunrise += 35;
+  else if (srLC >= 10 && srLC <= 40)   sunrise += 28;
+  else if (srClear)                    sunrise += 8;
+  else if (srLC > 85 && srMC > 60)     sunrise -= 15;  // true overcast
+
+  // Mid cloud contribution
   if (srMC >= 15 && srMC <= 70) sunrise += 22;
-  if (srHC >= 20 && srHC < 80)  sunrise += 15;
-  if (srRH >= 60 && srRH <= 88) sunrise += 12;
-  if (srPR > 0.3) sunrise += 15;
+
+  // High cloud — full range bonus (cirrus diffuses light at ALL coverage levels)
+  if      (srHC >= 80)              sunrise += 20;   // dense cirrus = big diffuser, was getting 0
+  else if (srHC >= 40 && srHC < 80) sunrise += 15;
+  else if (srHC >= 20 && srHC < 40) sunrise += 10;
+
+  // Pattern bonuses
+  if (srPaintersSky)   sunrise += 20;   // high overcast + broken low is a premium pattern
+  if (srCirrusOnly)    sunrise += 12;   // cirrus-only still gives warm sky wash
+  if (srCoastPattern)  sunrise += 18;   // coast marine stratus breaking
   if (locType==='coast' && srRH > 70) sunrise += 5;
-  if (locType==='coast' && srLC>=30 && srLC<=80 && srMC<20 && srHC<30) sunrise += 18;
+
+  // Humidity & precip
+  if (srRH >= 60 && srRH <= 88) sunrise += 12;
+  if (srPR > 0.3) sunrise += 15;       // post-rain clearing is excellent
 
   // ── Sunset score ──
+  // Same pattern detection for sunset window
+  const ssHighOvercast  = ssHC >= 80;
+  const ssBrokenLow     = ssLC >= 20 && ssLC <= 70;
+  const ssSmoulderZone  = ssLC > 40 && ssLC <= 75;
+  const ssCoastPattern  = locType==='coast' && ssLC>=25 && ssLC<=80 && ssMC<25 && ssHC<40;
+  const ssPaintersSky   = ssHighOvercast && ssBrokenLow && ssMC < 30;
+  const ssCirrusOnly    = ssHC >= 60 && ssLC < 20 && ssMC < 20;
+  const ssClear         = ssLC < 10 && ssMC < 10 && ssHC < 20;
+
   let sunset = 0;
-  if      (ssLC > 40 && ssLC <= 75) sunset += 35;
-  else if (ssLC >= 10 && ssLC <= 40) sunset += 28;
-  else if (ssLC < 10)               sunset += 12;
-  else if (ssLC > 90)               sunset -= 15;
+
+  if      (ssSmoulderZone)             sunset += 35;
+  else if (ssLC >= 10 && ssLC <= 40)   sunset += 28;
+  else if (ssClear)                    sunset += 10;
+  else if (ssLC > 85 && ssMC > 60)     sunset -= 15;
+
   if (ssMC >= 15 && ssMC <= 65) sunset += 22;
-  if (ssHC >= 25 && ssHC < 80)  sunset += 18;
+
+  if      (ssHC >= 80)              sunset += 20;
+  else if (ssHC >= 40 && ssHC < 80) sunset += 18;
+  else if (ssHC >= 25 && ssHC < 40) sunset += 12;
+
+  if (ssPaintersSky)   sunset += 20;
+  if (ssCirrusOnly)    sunset += 12;
+  if (ssCoastPattern)  sunset += 18;
+  if (locType==='coast' && ssRH > 70) sunset += 5;
+
   if (ssRH >= 55 && ssRH <= 88) sunset += 12;
   if (ssPR > 0.3) sunset += 10;
-  if (locType==='coast' && ssRH > 70) sunset += 5;
-  if (locType==='coast' && ssLC>=30 && ssLC<=80 && ssMC<20 && ssHC<30) sunset += 18;
+
+  // Store pattern flags for verdict use
+  const srPatterns = { srHighOvercast, srBrokenLow, srSmoulderZone, srOvercast, srCoastPattern, srPaintersSky, srCirrusOnly, srClear };
+  const ssPatterns = { ssHighOvercast, ssBrokenLow, ssSmoulderZone, ssCoastPattern, ssPaintersSky, ssCirrusOnly, ssClear };
 
   // ── Stars score ──
   // Moon data for this night
   // getMoonIllumination is always valid — it's pure math, no lat/lon dependency
   const moonIllum = SunCalc.getMoonIllumination(new Date(nightStartMs + 2*3600000));
   const moonTimes = SunCalc.getMoonTimes(dayDate, lat, lon);
-  const mwInfo    = getMilkyWayWindow(dayDate, lat);
+  const mwInfo    = getMilkyWayWindow(dayDate, lat, moonTimes);
   const moonBadge = moonPhaseBadge(moonIllum);
   const mPenalty  = moonPenalty(moonIllum.fraction);
 
@@ -912,6 +1299,27 @@ function computeScores(dayDate, locType, forecastData, lat, lon) {
   // Moon penalty applied last
   stars -= mPenalty;
 
+  // ── AQI windows ──
+  const srAQI   = winAvg(aqi, srFrom, srTo);
+  const ssAQI   = winAvg(aqi, ssFrom, ssTo);
+  const starsAQI = winAvg(aqi, effectiveStarsFrom, effectiveStarsTo);
+
+  // AQI penalty on stars (smoke reduces transparency)
+  if (starsAQI != null) {
+    if (starsAQI > 150) stars -= 20;
+    else if (starsAQI > 100) stars -= 10;
+    else if (starsAQI > 75) stars -= 5;
+  }
+
+  // ── Bortle penalty ──
+  const locName = activeLocIdx >= 0 ? LOCATIONS[activeLocIdx].name : '';
+  const bortleInfo = bortleForLocation(activeLocIdx, locName);
+  stars -= bortlePenalty(bortleInfo.bortle);
+
+  // Moon rise/set for display
+  const moonRiseStr  = moonTimes.rise  ? fmtTime(moonTimes.rise)  : (moonTimes.alwaysUp ? 'Up all night' : 'Does not rise');
+  const moonSetStr   = moonTimes.set   ? fmtTime(moonTimes.set)   : (moonTimes.alwaysDown ? 'Down all night' : 'Does not set');
+
   // ── Fog score ──
   let fog = 0;
   const dpSpread = fgT - fgDP;
@@ -929,9 +1337,15 @@ function computeScores(dayDate, locType, forecastData, lat, lon) {
     fog:     Math.max(0, Math.min(100, fog)),
     // pass-through data for detail panel
     moonBadge, moonFreeHours, mwInfo, clearStretch,
+    moonRiseStr, moonSetStr,
     fogBlanket: locType === 'ridge' && fogPotential >= 25,
+    bortleInfo,
+    srPatterns, ssPatterns,
     sunTimes,
-    windowData: { srLC, srMC, srHC, srRH, srT, srWD, ssLC, ssMC, ssHC, ssRH, ssT, ssWD, fgT, fgDP, fgRH, fgWD, starsRH, starsT, starsWD, spread }
+    windowData: { srLC, srMC, srHC, srRH, srT, srWD, srAQI,
+                  ssLC, ssMC, ssHC, ssRH, ssT, ssWD, ssAQI,
+                  fgT, fgDP, fgRH, fgWD,
+                  starsRH, starsT, starsWD, starsAQI, spread }
   };
 }
 
@@ -972,8 +1386,17 @@ function renderDays() {
     {key:'stars',icon:'★'},{key:'fog',icon:'☁'}
   ];
 
-  document.getElementById('day-grid').innerHTML = dayList.map((d,i) =>
-    `<div class="day-card ${i===selectedDay?'selected':''}" onclick="selectDay(${i})">
+  document.getElementById('day-grid').innerHTML = dayList.map((d,i) => {
+    const mw = d.scores.mwInfo;
+    const starsScore = d.scores.stars;
+    const mwLine = (() => {
+      if (currentTab !== 'stars') return ''; // only show on stars tab
+      if (!mw.shootable) return `<div style="font-size:9px;color:var(--text-secondary);margin-top:3px;opacity:0.7">🌌 Core not visible tonight</div>`;
+      if (starsScore < 20) return `<div style="font-size:9px;color:var(--text-secondary);margin-top:3px;opacity:0.7">🌌 Core up ${mw.windowStart}–${mw.windowEnd} · moon limits</div>`;
+      if (mw.moonFreeMWHrs >= 1) return `<div style="font-size:9px;color:var(--text-secondary);margin-top:3px;opacity:0.85">🌌 ${mw.moonFreeStart}–${mw.moonFreeEnd} moon-free · ${Math.round(mw.maxAlt)}° high</div>`;
+      return `<div style="font-size:9px;color:var(--text-secondary);margin-top:3px;opacity:0.7">🌌 Core up ${mw.windowStart}–${mw.windowEnd} · moon-lit</div>`;
+    })();
+    return `<div class="day-card ${i===selectedDay?'selected':''}" onclick="selectDay(${i})">
       <div class="day-top"><span class="day-name">${d.dayName}</span></div>
       <div class="day-label" style="margin-bottom:6px">${d.dateStr}</div>
       ${tabDefs.map(t => {
@@ -981,11 +1404,12 @@ function renderDays() {
         return `<div class="score-row" style="opacity:${t.key===currentTab?1:0.38}">
           <span class="score-icon">${t.key==='stars' ? d.scores.moonBadge.emoji : t.icon}</span>
           <div class="score-bar-wrap"><div class="score-bar" style="width:${s}%;background:${scoreColor(s)}"></div></div>
-          <span class="score-num">${Math.round(s)}</span>
+          <span class="score-num">${Math.round(s)}<span style="font-size:8px;opacity:0.5"> / 100</span></span>
         </div>`;
       }).join('')}
-    </div>`
-  ).join('');
+      ${mwLine}
+    </div>`;
+  }).join('');
 
   renderDetail(dayList[selectedDay], locType);
 }
@@ -1014,9 +1438,13 @@ function renderDetail(day, locType) {
     else if (s.moonFreeHours >= 2) badges.push([`${s.moonFreeHours.toFixed(0)}h dark window`, '#BA7517', '#f5e0b5']);
     else badges.push(['Short dark window', '#993C1D', '#f5cfc4']);
     if (s.fogBlanket) badges.push(['Fog blanket below', '#0F6E56', '#c8ead8']);
+    // Bortle badge
+    badges.push([`${s.bortleInfo.label} · ${s.bortleInfo.desc}`, s.bortleInfo.tc, s.bortleInfo.bg]);
+    // AQI badge for stars
+    const starsAqiLbl = aqiLabel(w.starsAQI);
+    if (starsAqiLbl) badges.push([starsAqiLbl.text, starsAqiLbl.tc, starsAqiLbl.bg]);
   } else {
     const lc = currentTab==='sunrise' ? w.srLC : currentTab==='sunset' ? w.ssLC : w.fgRH;
-    const dpSpr = (w.fgT - w.fgDP).toFixed(1);
     if (currentTab==='fog' && (w.fgT-w.fgDP) < 3) badges.push(['Fog risk', '#993C1D', '#f5cfc4']);
     if (currentTab!=='fog' && (w.fgT-w.fgDP) < 3) badges.push(['Fog likely', '#185FA5', '#dbeaf8']);
     const rhVal = currentTab==='sunrise' ? w.srRH : currentTab==='sunset' ? w.ssRH : w.fgRH;
@@ -1032,10 +1460,23 @@ function renderDetail(day, locType) {
       if (lcVal > 80 && mcVal > 60) badges.push(['Overcast', '#5F5E5A', '#e8e7e2']);
       if (hcVal > 40 && lcVal < 30) badges.push(['Cirrus layer', '#185FA5', '#dbeaf8']);
     }
+    // AQI badge for sunrise/sunset
+    if (currentTab === 'sunrise' || currentTab === 'sunset') {
+      const aqiVal = currentTab === 'sunrise' ? w.srAQI : w.ssAQI;
+      const aqiLbl = aqiLabel(aqiVal);
+      if (aqiLbl) badges.push([aqiLbl.text, aqiLbl.tc, aqiLbl.bg]);
+    }
   }
 
   const verdict = buildVerdict(score, day, currentTab, locType);
   const locTip = activeLocIdx>=0 ? (TIPS[LOCATIONS[activeLocIdx].name]||{})[currentTab] : null;
+
+  // AQI smoke note for sunrise/sunset
+  const aqiForNote = currentTab==='sunrise' ? w.srAQI : currentTab==='sunset' ? w.ssAQI : currentTab==='stars' ? w.starsAQI : null;
+  const smokeNote = aqiColorNote(aqiForNote);
+
+  // Hourly cloud detail panel
+  const hourlyPanel = buildHourlyPanel(day, currentTab, forecastData);
 
   // Night label for stars
   const monthNames = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
@@ -1048,41 +1489,64 @@ function renderDetail(day, locType) {
   let metrics = '';
   let ambientWeather = '';
   if (currentTab==='sunrise') {
-    const srWinFrom = formatISOTimeStr_offset(s.sunTimes.sunriseStr, -45);
-    const srWinTo   = formatISOTimeStr_offset(s.sunTimes.sunriseStr,  75);
+    const srWinFrom = s.sunTimes.sunriseISOStr ? formatISOTimeStr_offset(s.sunTimes.sunriseISOStr, -45) : '--:--';
+    const srWinTo   = s.sunTimes.sunriseISOStr ? formatISOTimeStr_offset(s.sunTimes.sunriseISOStr,  75) : '--:--';
+    const gh = s.sunTimes.sunriseISOStr ? getGoldenBlueHours(s.sunTimes.sunriseISOStr, s.sunTimes.sunsetISOStr) : null;
     metrics = `
-      <div class="metric-card"><div class="metric-label">Low clouds</div><div class="metric-value">${Math.round(w.srLC)}<span class="metric-unit">%</span></div></div>
-      <div class="metric-card"><div class="metric-label">Mid clouds</div><div class="metric-value">${Math.round(w.srMC)}<span class="metric-unit">%</span></div></div>
-      <div class="metric-card"><div class="metric-label">High clouds</div><div class="metric-value">${Math.round(w.srHC)}<span class="metric-unit">%</span></div></div>
-      <div class="metric-card"><div class="metric-label">Humidity</div><div class="metric-value">${Math.round(w.srRH)}<span class="metric-unit">%</span></div></div>
+      <div class="metric-card"><div class="metric-label">Low clouds</div><div class="metric-value">${safeRound(w.srLC)}<span class="metric-unit">%</span></div></div>
+      <div class="metric-card"><div class="metric-label">Mid clouds</div><div class="metric-value">${safeRound(w.srMC)}<span class="metric-unit">%</span></div></div>
+      <div class="metric-card"><div class="metric-label">High clouds</div><div class="metric-value">${safeRound(w.srHC)}<span class="metric-unit">%</span></div></div>
+      <div class="metric-card"><div class="metric-label">Humidity</div><div class="metric-value">${safeRound(w.srRH)}<span class="metric-unit">%</span></div></div>
       <div class="metric-card"><div class="metric-label">Sunrise</div><div class="metric-value" style="font-size:14px">${s.sunTimes.sunriseStr||'--'}</div></div>
-      <div class="metric-card"><div class="metric-label">Window</div><div class="metric-value" style="font-size:13px">${srWinFrom}–${srWinTo}</div></div>`;
-    ambientWeather = `${fmtTemp(w.srT)} · Wind ${Math.round(w.srWD)} mph`;
+      <div class="metric-card"><div class="metric-label">Score window</div><div class="metric-value" style="font-size:13px">${srWinFrom}–${srWinTo}</div></div>
+      ${gh ? `
+      <div class="metric-card" style="border-color:var(--blue)"><div class="metric-label" style="color:var(--blue-text)">🔵 Blue hour</div><div class="metric-value" style="font-size:12px">${gh.morningBlue.from}–${gh.morningBlue.to}</div></div>
+      <div class="metric-card" style="border-color:var(--amber)"><div class="metric-label" style="color:var(--amber-text)">🌟 Golden hour</div><div class="metric-value" style="font-size:12px">${gh.morningGolden.from}–${gh.morningGolden.to}</div></div>
+      <div class="metric-card"><div class="metric-label">Moonrise</div><div class="metric-value" style="font-size:13px">${s.moonRiseStr}</div></div>` : ''}`;
+    ambientWeather = `${fmtTemp(w.srT)} · Wind ${Math.round(w.srWD)} mph · Moonset ${s.moonSetStr}`;
   } else if (currentTab==='sunset') {
-    const ssWinFrom = formatISOTimeStr_offset(s.sunTimes.sunsetStr, -90);
-    const ssWinTo   = formatISOTimeStr_offset(s.sunTimes.sunsetStr,  45);
+    const ssWinFrom = s.sunTimes.sunsetISOStr ? formatISOTimeStr_offset(s.sunTimes.sunsetISOStr, -90) : '--:--';
+    const ssWinTo   = s.sunTimes.sunsetISOStr ? formatISOTimeStr_offset(s.sunTimes.sunsetISOStr,  45) : '--:--';
+    const gh = s.sunTimes.sunsetISOStr ? getGoldenBlueHours(s.sunTimes.sunriseISOStr, s.sunTimes.sunsetISOStr) : null;
     metrics = `
-      <div class="metric-card"><div class="metric-label">Low clouds</div><div class="metric-value">${Math.round(w.ssLC)}<span class="metric-unit">%</span></div></div>
-      <div class="metric-card"><div class="metric-label">Mid clouds</div><div class="metric-value">${Math.round(w.ssMC)}<span class="metric-unit">%</span></div></div>
-      <div class="metric-card"><div class="metric-label">High clouds</div><div class="metric-value">${Math.round(w.ssHC)}<span class="metric-unit">%</span></div></div>
-      <div class="metric-card"><div class="metric-label">Humidity</div><div class="metric-value">${Math.round(w.ssRH)}<span class="metric-unit">%</span></div></div>
+      <div class="metric-card"><div class="metric-label">Low clouds</div><div class="metric-value">${safeRound(w.ssLC)}<span class="metric-unit">%</span></div></div>
+      <div class="metric-card"><div class="metric-label">Mid clouds</div><div class="metric-value">${safeRound(w.ssMC)}<span class="metric-unit">%</span></div></div>
+      <div class="metric-card"><div class="metric-label">High clouds</div><div class="metric-value">${safeRound(w.ssHC)}<span class="metric-unit">%</span></div></div>
+      <div class="metric-card"><div class="metric-label">Humidity</div><div class="metric-value">${safeRound(w.ssRH)}<span class="metric-unit">%</span></div></div>
       <div class="metric-card"><div class="metric-label">Sunset</div><div class="metric-value" style="font-size:14px">${s.sunTimes.sunsetStr||'--'}</div></div>
-      <div class="metric-card"><div class="metric-label">Window</div><div class="metric-value" style="font-size:13px">${ssWinFrom}–${ssWinTo}</div></div>`;
-    ambientWeather = `${fmtTemp(w.ssT)} · Wind ${Math.round(w.ssWD)} mph`;
+      <div class="metric-card"><div class="metric-label">Score window</div><div class="metric-value" style="font-size:13px">${ssWinFrom}–${ssWinTo}</div></div>
+      ${gh ? `
+      <div class="metric-card" style="border-color:var(--amber)"><div class="metric-label" style="color:var(--amber-text)">🌟 Golden hour</div><div class="metric-value" style="font-size:12px">${gh.eveningGolden.from}–${gh.eveningGolden.to}</div></div>
+      <div class="metric-card" style="border-color:var(--blue)"><div class="metric-label" style="color:var(--blue-text)">🔵 Blue hour</div><div class="metric-value" style="font-size:12px">${gh.eveningBlue.from}–${gh.eveningBlue.to}</div></div>
+      <div class="metric-card"><div class="metric-label">Moonrise</div><div class="metric-value" style="font-size:13px">${s.moonRiseStr}</div></div>` : ''}`;
+    ambientWeather = `${fmtTemp(w.ssT)} · Wind ${Math.round(w.ssWD)} mph · Moonset ${s.moonSetStr}`;
   } else if (currentTab==='stars') {
+    const mw = s.mwInfo;
+    const mwStatus   = mw.shootable
+      ? (mw.moonFreeMWHrs >= 1
+          ? `✓ ${mw.moonFreeStart}–${mw.moonFreeEnd}`
+          : `⚠ Moon-lit ${mw.windowStart}–${mw.windowEnd}`)
+      : (mw.season === 'daylight' ? 'Daylight only' : 'Not visible');
+    const mwAlt      = mw.shootable && mw.maxAlt ? `${Math.round(mw.maxAlt)}°` : '--';
+    const mwColor    = (mw.shootable && mw.moonFreeMWHrs >= 1) ? 'var(--blue)' : (mw.shootable ? 'var(--amber)' : 'var(--border)');
+    const mwValColor = (mw.shootable && mw.moonFreeMWHrs >= 1) ? 'var(--blue-text)' : (mw.shootable ? 'var(--amber-text)' : 'var(--text-secondary)');
+    const seasonLabel = mw.shootable ? ({ 'pre-dawn': 'Pre-dawn', 'evening': 'Prime ✨', 'early-eve': 'Early eve', 'closing': 'Closing' }[mw.season] || '--') : '--';
     metrics = `
-      <div class="metric-card"><div class="metric-label">Moon</div><div class="metric-value" style="font-size:14px">${s.moonBadge.emoji} ${Math.round(s.moonBadge.fraction*100)}<span class="metric-unit">%</span></div></div>
+      <div class="metric-card"><div class="metric-label">Moon</div><div class="metric-value" style="font-size:14px">${s.moonBadge.emoji} ${safeRound(s.moonBadge.fraction*100)}<span class="metric-unit">%</span></div></div>
       <div class="metric-card"><div class="metric-label">Dark window</div><div class="metric-value" style="font-size:14px">${s.moonFreeHours.toFixed(1)}<span class="metric-unit">h</span></div></div>
-      <div class="metric-card"><div class="metric-label">Best 4h clouds</div><div class="metric-value">${Math.round(s.clearStretch.bestAvg)}<span class="metric-unit">%</span></div></div>
-      <div class="metric-card"><div class="metric-label">Humidity</div><div class="metric-value">${Math.round(w.starsRH)}<span class="metric-unit">%</span></div></div>
-      <div class="metric-card"><div class="metric-label">Dew spread</div><div class="metric-value">${fmtSpread(w.spread)}</div></div>
-      <div class="metric-card"><div class="metric-label">Dark starts</div><div class="metric-value" style="font-size:13px">${fmtTime(s.sunTimes.nightStart)}</div></div>`;
-    ambientWeather = `${fmtTemp(w.starsT)} · Wind ${Math.round(w.starsWD)} mph`;
+      <div class="metric-card"><div class="metric-label">Best 4h clouds</div><div class="metric-value">${safeRound(s.clearStretch.bestAvg)}<span class="metric-unit">%</span></div></div>
+      <div class="metric-card"><div class="metric-label">Moonrise</div><div class="metric-value" style="font-size:13px">${s.moonRiseStr}</div></div>
+      <div class="metric-card"><div class="metric-label">Moonset</div><div class="metric-value" style="font-size:13px">${s.moonSetStr}</div></div>
+      <div class="metric-card"><div class="metric-label">Humidity</div><div class="metric-value">${safeRound(w.starsRH)}<span class="metric-unit">%</span></div></div>
+      <div class="metric-card" style="border:0.5px solid ${mwColor}"><div class="metric-label">🌌 MW window</div><div class="metric-value" style="font-size:12px;color:${mwValColor}">${mwStatus}</div></div>
+      <div class="metric-card"><div class="metric-label">🌌 Peak alt</div><div class="metric-value">${mwAlt}</div></div>
+      <div class="metric-card"><div class="metric-label">🌌 Season</div><div class="metric-value" style="font-size:12px">${seasonLabel}</div></div>`;
+    ambientWeather = `Sunset ${s.sunTimes.sunsetStr} · Dark ${fmtTime(s.sunTimes.nightStart)} · Wind ${Math.round(w.starsWD)} mph`;
   } else {
     metrics = `
-      <div class="metric-card"><div class="metric-label">Low clouds</div><div class="metric-value">${Math.round(w.fgLC)}<span class="metric-unit">%</span></div></div>
-      <div class="metric-card"><div class="metric-label">Humidity</div><div class="metric-value">${Math.round(w.fgRH)}<span class="metric-unit">%</span></div></div>
-      <div class="metric-card"><div class="metric-label">Wind</div><div class="metric-value">${Math.round(w.fgWD)}<span class="metric-unit"> mph</span></div></div>
+      <div class="metric-card"><div class="metric-label">Low clouds</div><div class="metric-value">${safeRound(w.fgLC)}<span class="metric-unit">%</span></div></div>
+      <div class="metric-card"><div class="metric-label">Humidity</div><div class="metric-value">${safeRound(w.fgRH)}<span class="metric-unit">%</span></div></div>
+      <div class="metric-card"><div class="metric-label">Wind</div><div class="metric-value">${safeRound(w.fgWD)}<span class="metric-unit"> mph</span></div></div>
       <div class="metric-card"><div class="metric-label">Temp</div><div class="metric-value" style="font-size:15px">${fmtTemp(w.fgT)}</div></div>
       <div class="metric-card"><div class="metric-label">Dewpoint</div><div class="metric-value" style="font-size:15px">${fmtTemp(w.fgDP)}</div></div>
       <div class="metric-card"><div class="metric-label">D-P spread</div><div class="metric-value">${fmtSpread(w.fgT - w.fgDP)}</div></div>`;
@@ -1105,6 +1569,8 @@ function renderDetail(day, locType) {
       <div class="verdict" style="background:${bg};color:${tc}">${verdict}</div>
       ${nightLabel ? `<div class="night-label">📅 ${nightLabel}</div>` : ''}
       ${locTip ? `<div class="tip">${locTip}</div>` : ''}
+      ${smokeNote ? `<div class="aqi-note">🔥 ${smokeNote}</div>` : ''}
+      ${hourlyPanel}
       <div class="feedback-row">
         <div class="feedback-picker">
           <button class="feedback-btn" onclick="toggleMailPicker(this, event)">✉ Report what you actually saw ▾</button>
@@ -1174,15 +1640,211 @@ function buildFeedbackLinks(day, locName, score, label) {
   };
 }
 
+// ── Hourly cloud detail panel ────────────────────────────────────────────────
+function cloudChip(val) {
+  if (val == null || isNaN(val)) return '<span style="color:var(--text-secondary)">--</span>';
+  const v = Math.round(val);
+  let bg, tc;
+  if (v < 15)      { bg='#c8ead8'; tc='#0F6E56'; }
+  else if (v < 40) { bg='#f5e0b5'; tc='#BA7517'; }
+  else if (v < 75) { bg='#f5cfc4'; tc='#993C1D'; }
+  else             { bg='#e8e7e2'; tc='#5F5E5A'; }
+  return `<span class="cloud-chip" style="background:${bg};color:${tc}">${v}%</span>`;
+}
+
+function buildHourlyPanel(day, currentTab, forecastData) {
+  if (!forecastData) return '';
+  const { ts, lclouds, mclouds, hclouds, aqi, sunriseLookup, sunsetLookup } = forecastData;
+  const dateKey = `${day.dayDate.getFullYear()}-${String(day.dayDate.getMonth()+1).padStart(2,'0')}-${String(day.dayDate.getDate()).padStart(2,'0')}`;
+
+  // Find a reliable dayRef and midnight anchor using the same method as computeScores
+  const dayRef = ts.find(t => {
+    const d = new Date(t);
+    return d.getFullYear() === day.dayDate.getFullYear() &&
+           d.getMonth()    === day.dayDate.getMonth() &&
+           d.getDate()     === day.dayDate.getDate();
+  }) || day.dayDate.getTime();
+
+  const dayMidnight = ts.find(t => {
+    const d = new Date(t);
+    return d.getFullYear() === day.dayDate.getFullYear() &&
+           d.getMonth()    === day.dayDate.getMonth() &&
+           d.getDate()     === day.dayDate.getDate() &&
+           d.getHours()    === 0;
+  });
+  const base = dayMidnight !== undefined ? dayMidnight : day.dayDate.getTime();
+
+  // Determine window anchor
+  let windowFromMs, windowToMs, windowLabel;
+  if (currentTab === 'sunrise') {
+    const srStr = sunriseLookup && sunriseLookup[dateKey];
+    const srMs = srStr ? isoTimeToMs(srStr, dayRef) : null;
+    if (!srMs) return '';
+    windowFromMs = srMs - 2*3600000;
+    windowToMs   = srMs + 2*3600000;
+    windowLabel  = `±2h around sunrise (${formatISOTimeStr(srStr)})`;
+  } else if (currentTab === 'sunset') {
+    const ssStr = sunsetLookup && sunsetLookup[dateKey];
+    const ssMs = ssStr ? isoTimeToMs(ssStr, dayRef) : null;
+    if (!ssMs) return '';
+    windowFromMs = ssMs - 2*3600000;
+    windowToMs   = ssMs + 2*3600000;
+    windowLabel  = `±2h around sunset (${formatISOTimeStr(ssStr)})`;
+  } else if (currentTab === 'stars') {
+    // 9 PM this day → 4 AM next day: span two days' midnight anchors
+    // Find next day midnight too
+    const nextBase = ts.find(t => {
+      const d = new Date(t);
+      const nd = new Date(base + 86400000);
+      return d.getFullYear() === nd.getFullYear() &&
+             d.getMonth()    === nd.getMonth() &&
+             d.getDate()     === nd.getDate() &&
+             d.getHours()    === 0;
+    });
+    windowFromMs = base + 21*3600000;          // 9 PM today
+    windowToMs   = (nextBase || base + 86400000) + 4*3600000; // 4 AM tomorrow
+    windowLabel  = 'Night window (9 PM – 4 AM)';
+  } else {
+    // Fog: 3 AM → 10 AM
+    windowFromMs = base + 3*3600000;
+    windowToMs   = base + 10*3600000;
+    windowLabel  = 'Fog window (3 AM – 10 AM)';
+  }
+
+  // Build rows for each hour in the window
+  const rows = [];
+  ts.forEach((t, i) => {
+    if (t < windowFromMs || t >= windowToMs) return;
+    const d = new Date(t);
+    const h = d.getHours();
+    const m = String(d.getMinutes()).padStart(2,'0');
+    const ampm = h >= 12 ? 'PM' : 'AM';
+    const h12 = h % 12 || 12;
+    const timeStr = `${h12}:${m} ${ampm}`;
+    const lc = lclouds[i]; const mc = mclouds[i]; const hc = hclouds[i];
+    const aqiVal = aqi ? aqi[i] : null;
+    // Is this hour in the golden-hour window?
+    let inWindow = false;
+    if (currentTab==='sunrise' || currentTab==='sunset') {
+      const anchor = currentTab==='sunrise' ? windowFromMs + 2*3600000 : windowFromMs + 2*3600000;
+      const winStart = anchor - (currentTab==='sunrise' ? 45 : 90)*60000;
+      const winEnd   = anchor + (currentTab==='sunrise' ? 75 : 45)*60000;
+      inWindow = t >= winStart && t < winEnd;
+    }
+    rows.push({ timeStr, lc, mc, hc, aqiVal, inWindow });
+  });
+
+  if (!rows.length) return '';
+
+  const showAQI = aqi && rows.some(r => r.aqiVal != null);
+  const aqiHeader = showAQI ? '<th>AQI</th>' : '';
+
+  const tableRows = rows.map(r => {
+    const aqiCell = showAQI ? `<td>${r.aqiVal != null ? Math.round(r.aqiVal) : '--'}</td>` : '';
+    return `<tr class="${r.inWindow ? 'window-row' : ''}">
+      <td>${r.timeStr}${r.inWindow ? ' ★' : ''}</td>
+      <td>${cloudChip(r.lc)}</td><td>${cloudChip(r.mc)}</td><td>${cloudChip(r.hc)}</td>
+      ${aqiCell}
+    </tr>`;
+  }).join('');
+
+  return `<div class="hourly-panel">
+    <button class="hourly-toggle" onclick="this.nextElementSibling.style.display=this.nextElementSibling.style.display==='none'?'block':'none';this.querySelector('.toggle-arrow').textContent=this.nextElementSibling.style.display==='none'?'▸':'▾'">
+      <span>Hourly cloud detail — ${windowLabel}</span>
+      <span class="toggle-arrow">▸</span>
+    </button>
+    <div style="display:none;overflow-x:auto">
+      <table class="hourly-table">
+        <thead><tr><th>Hour</th><th>Low</th><th>Mid</th><th>High</th>${aqiHeader}</tr></thead>
+        <tbody>${tableRows}</tbody>
+      </table>
+      <div style="padding:6px 8px;font-size:10px;color:var(--text-secondary)">★ = golden hour window</div>
+    </div>
+  </div>`;
+}
+
 function buildVerdict(score, day, type, locType) {
   const s = day.scores;
   const w = s.windowData;
 
-  if (type==='sunrise'||type==='sunset') {
-    const lbl = type==='sunrise' ? 'sunrise' : 'sunset';
-    if (score>=75) return `Strong color potential. Cloud structure in the ${lbl} window with good humidity will scatter warm light effectively. Worth getting out.`;
-    if (score>=55) return `Moderate color possible. Cloud structure is present but may be uneven. Could still deliver a good ${lbl} — monitor conditions the evening before.`;
-    if (score>=35) return `Marginal ${lbl} conditions. Coverage may be too uniform or too sparse in the critical window. Watch for last-minute changes.`;
+  if (type==='sunrise' || type==='sunset') {
+    const lbl   = type==='sunrise' ? 'sunrise' : 'sunset';
+    const isSR  = type==='sunrise';
+    const p     = isSR ? s.srPatterns : s.ssPatterns;
+    const lc    = isSR ? w.srLC : w.ssLC;
+    const mc    = isSR ? w.srMC : w.ssMC;
+    const hc    = isSR ? w.srHC : w.ssHC;
+    const rh    = isSR ? w.srRH : w.ssRH;
+    const coast = locType === 'coast';
+    const ridge = locType === 'ridge';
+
+    // ── Pattern-specific verdicts (most specific first) ──
+
+    // Painter's sky: dense high cloud + broken low — premium pattern
+    if (p && (isSR ? p.srPaintersSky : p.ssPaintersSky)) {
+      const base = coast
+        ? `Classic Sonoma Coast painter's sky. The high cloud canopy diffuses warm light across the whole sky while the broken low cloud layer catches fire from below.`
+        : `High cloud canopy acting as a giant diffuser with broken low clouds to catch the light from beneath — one of the best ${lbl} patterns possible.`;
+      return score >= 60
+        ? `${base} Strong color likely across a wide sky. Get out for this one.`
+        : `${base} Some factors may limit intensity — worth going but temper expectations.`;
+    }
+
+    // High cirrus canopy only — warm wash, soft color
+    if (p && (isSR ? p.srCirrusOnly : p.ssCirrusOnly)) {
+      return score >= 55
+        ? `Dense cirrus layer will scatter warm light across the whole sky, creating a wide amber or pink wash. Less dramatic than broken cloud but often very painterly. Worth going.`
+        : `Cirrus layer present but other factors limit color potential. May still produce a warm sky glow — soft rather than vivid.`;
+    }
+
+    // Smoulder zone — classic broken low cloud
+    if (p && (isSR ? p.srSmoulderZone : p.ssSmoulderZone)) {
+      const coastNote = coast ? ` At ${coast ? 'the coast' : 'this location'}, broken marine layer clouds light up brilliantly from below.` : '';
+      const ridgeNote = ridge ? ' From the ridge you may see the lit cloud tops below you.' : '';
+      return score >= 70
+        ? `Broken low cloud in the sweet spot — 40–75% coverage means enough structure to catch light without blocking it.${coastNote}${ridgeNote} High probability of vivid color.`
+        : `Broken low cloud with decent structure. Color possible but mid/high layer may interfere.${coastNote} Monitor the hour before ${lbl}.`;
+    }
+
+    // Coast marine stratus pattern
+    if (p && (isSR ? p.srCoastPattern : p.ssCoastPattern)) {
+      return score >= 55
+        ? `Marine stratus with clear sky above — the coastal signature pattern. Low cloud edges glow orange as the sun clears or dips below. Often delivers the most vivid color on the Sonoma Coast.`
+        : `Marine stratus present. Color depends on how much the layer has broken — check conditions an hour before ${lbl}.`;
+    }
+
+    // Partial low cloud — some structure
+    if (lc >= 10 && lc < 40) {
+      const hcNote = hc >= 40 ? ' High clouds add a warm diffuse glow above.' : '';
+      return score >= 55
+        ? `Partial cloud cover with good structure in the window.${hcNote} Light patches and cloud edges should catch color well.`
+        : `Some cloud structure present but coverage may be too sparse for strong color.${hcNote} Could still be worth going for the light quality even if color is muted.`;
+    }
+
+    // True overcast — flat light
+    if (lc > 85 && mc > 60) {
+      return `Dense overcast likely to block direct light during the ${lbl} window. Flat, diffuse light — good for even exposure but unlikely to produce vivid color. Consider staying home unless the location itself is the draw.`;
+    }
+
+    // Clear sky — minimal color
+    if (p && (isSR ? p.srClear : p.ssClear)) {
+      const clearNote = rh > 70
+        ? ' Higher humidity may add some warm atmospheric haze near the horizon.'
+        : ' Very dry and clear — light will be clean and golden but the sky itself won\'t show much color.';
+      return `Mostly clear sky in the ${lbl} window.${clearNote} ${score >= 40 ? 'Worth going for the clean golden light even without dramatic color.' : 'Probably not worth a dedicated trip for color.'}`;
+    }
+
+    // High cloud only (not cirrus-only threshold but still significant)
+    if (hc >= 50 && lc < 25) {
+      return score >= 50
+        ? `High cloud layer will diffuse and warm the light across a broad sky. Without low clouds to catch direct color it may be more of a warm glow than vivid drama — but can be beautiful.`
+        : `High cloud present but low cloud structure is limited. May produce a soft warm sky rather than strong color.`;
+    }
+
+    // Generic fallback by score
+    if (score >= 75) return `Strong color potential in the ${lbl} window. Cloud structure and humidity are well-positioned to scatter warm light. Worth getting out.`;
+    if (score >= 55) return `Moderate color possible. Conditions are partially favorable — could still deliver a good ${lbl}. Monitor the hour before.`;
+    if (score >= 35) return `Marginal ${lbl} conditions. Coverage may be too uniform or too sparse. Watch forecasts for last-minute changes.`;
     return `Unlikely to produce strong color. Sky appears either too clear or fully overcast during the ${lbl} window.`;
   }
 
@@ -1217,12 +1879,12 @@ function buildVerdict(score, day, type, locType) {
   }
 
   if (type==='fog') {
-    const dpSpr = (w.fgT-w.fgDP).toFixed(1);
+    const dpSpr = fmtSpread(w.fgT-w.fgDP);
     const ridgeNote = locType==='ridge' ? ' At this elevation you sit above the fog — a high score means sea-of-clouds below you.' : '';
-    if (score>=70) return `High fog potential. Dewpoint spread of ${dpSpr}°C and humidity at ${Math.round(w.fgRH)}% strongly favor radiation or marine fog formation.${ridgeNote} Arrive early.`;
+    if (score>=70) return `High fog potential. Dewpoint spread of ${dpSpr} and humidity at ${Math.round(w.fgRH)}% strongly favor radiation or marine fog formation.${ridgeNote} Arrive early.`;
     if (score>=45) return `Moderate fog chance. Conditions are favorable but not certain. Valley or marine fog may form overnight and burn off by mid-morning.${ridgeNote}`;
     if (score>=25) return `Some low-level moisture present. Isolated fog patches possible near water or in valley floors.${ridgeNote}`;
-    return `Low fog potential. Dewpoint spread of ${dpSpr}°C is too large for significant fog formation under current conditions.`;
+    return `Low fog potential. Dewpoint spread of ${dpSpr} is too large for significant fog formation under current conditions.`;
   }
 }
 
@@ -1239,9 +1901,23 @@ async function fetchForecast(lat, lon) {
       + `&daily=sunrise,sunset`
       + `&temperature_unit=celsius&windspeed_unit=mph&forecast_days=8`
       + `&timezone=auto`;
+
+    // Main forecast fetch
     const res = await fetch(url);
     if (!res.ok) throw new Error('API error');
     const json = await res.json();
+
+    // AQI fetch — fully isolated, never blocks or throws to main flow
+    let aqiJson = null;
+    try {
+      const aqiUrl = `https://air-quality-api.open-meteo.com/v1/air-quality?latitude=${lat}&longitude=${lon}`
+        + `&hourly=us_aqi&forecast_days=8&timezone=auto`;
+      const aqiController = new AbortController();
+      const aqiTimeout = setTimeout(() => aqiController.abort(), 4000); // 4s timeout
+      const aqiRes = await fetch(aqiUrl, { signal: aqiController.signal });
+      clearTimeout(aqiTimeout);
+      if (aqiRes.ok) aqiJson = await aqiRes.json();
+    } catch(e) { /* AQI unavailable — proceed without it */ }
     const h = json.hourly;
     const d = json.daily;
     const toK = c => c+273.15;
@@ -1265,12 +1941,14 @@ async function fetchForecast(lat, lon) {
       temp:      h.temperature_2m.map(toK),
       precip:    h.precipitation,
       windSpeed: h.windspeed_10m,
+      aqi:       aqiJson ? aqiJson.hourly.us_aqi : null,
       sunriseLookup,
       sunsetLookup,
     };
     renderDays();
   } catch(e) {
-    document.getElementById('day-grid').innerHTML = `<div class="status error-msg" style="grid-column:1/-1">Could not load forecast data. Check your internet connection and try again.</div>`;
+    console.error('Forecast error:', e);
+    document.getElementById('day-grid').innerHTML = `<div class="status error-msg" style="grid-column:1/-1">Error: ${e.message || 'Unknown error'}. Check console for details.</div>`;
   }
 }
 
@@ -1314,10 +1992,13 @@ function loadStateFromURL() {
   return false;
 }
 
-renderLocGrid();
-if (!loadStateFromURL()) {
-  fetchForecast(LOCATIONS[0].lat, LOCATIONS[0].lon);
-}
+document.addEventListener('DOMContentLoaded', () => {
+  renderLocGrid();
+  renderFavGrid();
+  if (!loadStateFromURL()) {
+    fetchForecast(LOCATIONS[0].lat, LOCATIONS[0].lon);
+  }
+});
 
 function toggleMailPicker(btn, e) {
   e.stopPropagation();
