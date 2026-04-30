@@ -1,0 +1,442 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Photographer's Forecast — User Guide</title>
+<style>
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+  :root {
+    --bg: #ffffff;
+    --bg-secondary: #f5f4f0;
+    --bg-tertiary: #eeede9;
+    --text: #1a1a18;
+    --text-secondary: #6b6a66;
+    --border: rgba(0,0,0,0.1);
+    --blue: #378ADD;
+    --blue-bg: #E6F1FB;
+    --blue-text: #185FA5;
+    --green: #1D9E75;
+    --green-bg: #E1F5EE;
+    --green-text: #0F6E56;
+    --amber: #EF9F27;
+    --amber-bg: #FAEEDA;
+    --amber-text: #BA7517;
+    --coral-bg: #FAECE7;
+    --coral-text: #993C1D;
+    --gray-bg: #F1EFE8;
+    --gray-text: #5F5E5A;
+    --radius: 10px;
+  }
+
+  @media (prefers-color-scheme: dark) {
+    :root {
+      --bg: #1c1c1a;
+      --bg-secondary: #262624;
+      --bg-tertiary: #2e2e2c;
+      --text: #f0efe9;
+      --text-secondary: #9a9994;
+      --border: rgba(255,255,255,0.1);
+      --blue-bg: #0c2a45;
+      --blue-text: #85B7EB;
+      --green-bg: #04221a;
+      --green-text: #5DCAA5;
+      --amber-bg: #2a1c04;
+      --amber-text: #FAC775;
+      --coral-bg: #2a0e06;
+      --coral-text: #F0997B;
+      --gray-bg: #2c2c2a;
+      --gray-text: #B4B2A9;
+    }
+  }
+
+  body {
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+    background: var(--bg-tertiary);
+    color: var(--text);
+    min-height: 100vh;
+    padding: 2rem 1rem 4rem;
+    line-height: 1.6;
+  }
+
+  .container { max-width: 680px; margin: 0 auto; }
+
+  /* Header */
+  .guide-header {
+    margin-bottom: 2.5rem;
+    padding-bottom: 1.5rem;
+    border-bottom: 0.5px solid var(--border);
+  }
+  .guide-header h1 {
+    font-size: 22px; font-weight: 500; margin-bottom: 4px;
+  }
+  .guide-header .subtitle {
+    font-size: 13px; color: var(--text-secondary);
+  }
+  .guide-header .subtitle a {
+    color: var(--blue-text); text-decoration: none;
+  }
+
+  /* Section */
+  .section { margin-bottom: 2rem; }
+  .section h2 {
+    font-size: 12px; font-weight: 600; letter-spacing: 0.06em;
+    text-transform: uppercase; color: var(--text-secondary);
+    margin-bottom: 0.75rem;
+  }
+
+  /* Card */
+  .card {
+    background: var(--bg); border: 0.5px solid var(--border);
+    border-radius: var(--radius); padding: 1rem 1.125rem;
+    margin-bottom: 0.5rem;
+  }
+  .card h3 {
+    font-size: 14px; font-weight: 500; margin-bottom: 6px;
+  }
+  .card p {
+    font-size: 13px; color: var(--text-secondary); line-height: 1.6;
+  }
+  .card p + p { margin-top: 6px; }
+
+  /* Score chips */
+  .score-row {
+    display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 0.75rem;
+  }
+  .chip {
+    display: inline-flex; align-items: center; gap: 5px;
+    padding: 4px 11px; border-radius: 6px;
+    font-size: 12px; font-weight: 500;
+  }
+  .chip.green  { background: var(--green-bg);  color: var(--green-text); }
+  .chip.amber  { background: var(--amber-bg);  color: var(--amber-text); }
+  .chip.coral  { background: var(--coral-bg);  color: var(--coral-text); }
+  .chip.gray   { background: var(--gray-bg);   color: var(--gray-text);  }
+  .chip.blue   { background: var(--blue-bg);   color: var(--blue-text);  }
+
+  /* Inline tip */
+  .tip {
+    padding: 9px 13px; border-radius: var(--radius);
+    font-size: 12px; line-height: 1.55;
+    border-left: 3px solid var(--blue);
+    background: var(--bg-secondary); color: var(--text-secondary);
+    margin-top: 0.5rem;
+  }
+
+  /* Two-col grid for score meanings */
+  .meaning-grid {
+    display: grid; grid-template-columns: 1fr 1fr; gap: 6px;
+  }
+  @media (max-width: 480px) { .meaning-grid { grid-template-columns: 1fr; } }
+
+  .meaning-card {
+    background: var(--bg); border: 0.5px solid var(--border);
+    border-radius: var(--radius); padding: 10px 12px;
+  }
+  .meaning-card .label {
+    font-size: 11px; font-weight: 600; margin-bottom: 3px;
+  }
+  .meaning-card .desc {
+    font-size: 12px; color: var(--text-secondary); line-height: 1.5;
+  }
+
+  /* Term list */
+  .term-list { display: flex; flex-direction: column; gap: 6px; }
+  .term-row {
+    background: var(--bg); border: 0.5px solid var(--border);
+    border-radius: var(--radius); padding: 10px 12px;
+    display: flex; gap: 10px; align-items: flex-start;
+  }
+  .term-name {
+    font-size: 12px; font-weight: 600; min-width: 100px;
+    color: var(--text); flex-shrink: 0;
+  }
+  .term-desc {
+    font-size: 12px; color: var(--text-secondary); line-height: 1.5;
+  }
+
+  /* Steps */
+  .steps { display: flex; flex-direction: column; gap: 6px; }
+  .step {
+    background: var(--bg); border: 0.5px solid var(--border);
+    border-radius: var(--radius); padding: 10px 12px;
+    display: flex; gap: 12px; align-items: flex-start;
+  }
+  .step-num {
+    width: 22px; height: 22px; border-radius: 50%;
+    background: var(--blue-bg); color: var(--blue-text);
+    font-size: 11px; font-weight: 700;
+    display: flex; align-items: center; justify-content: center;
+    flex-shrink: 0; margin-top: 1px;
+  }
+  .step-text { font-size: 13px; line-height: 1.55; color: var(--text); }
+  .step-text strong { font-weight: 500; }
+  .step-text span { color: var(--text-secondary); font-size: 12px; }
+
+  /* Footer */
+  footer {
+    margin-top: 3rem; text-align: center;
+    font-size: 11px; color: var(--text-secondary);
+  }
+  footer a { color: var(--blue-text); text-decoration: none; }
+
+  hr { border: none; border-top: 0.5px solid var(--border); margin: 2rem 0; }
+</style>
+</head>
+<body>
+<div class="container">
+
+  <div class="guide-header">
+    <h1>Photographer's Forecast — User Guide</h1>
+    <p class="subtitle">A planning tool for golden hour color, fog, stars &amp; dark skies ·
+      Built for <a href="https://rjfineart.com" target="_blank">LadyBugFarm Images</a>
+    </p>
+  </div>
+
+  <!-- What it is -->
+  <div class="section">
+    <h2>What this tool does</h2>
+    <div class="card">
+      <p>Photographer's Forecast pulls 7-day weather model data and scores each day on four things photographers care about: <strong>sunrise color potential</strong>, <strong>sunset color potential</strong>, <strong>clear skies for stars</strong>, and <strong>fog formation</strong>. Scores run from 0–100 — they are not percentages. Think of them as a confidence rating: 80+ means conditions are strongly aligned, 30 and below means it's probably not worth the drive.</p>
+      <p>It does not replace checking conditions the evening before. Use it to identify the days worth watching, then confirm closer to the time.</p>
+    </div>
+  </div>
+
+  <!-- Score scale -->
+  <div class="section">
+    <h2>Score scale</h2>
+    <div class="score-row">
+      <span class="chip green">80–100 · Exceptional</span>
+      <span class="chip green">65–79 · Very good</span>
+      <span class="chip amber">50–64 · Fair</span>
+      <span class="chip coral">30–49 · Marginal</span>
+      <span class="chip gray">0–29 · Poor</span>
+    </div>
+    <div class="meaning-grid">
+      <div class="meaning-card">
+        <div class="label" style="color:var(--green-text)">80+ Exceptional</div>
+        <div class="desc">Rare alignment of all factors. Set your alarm and go.</div>
+      </div>
+      <div class="meaning-card">
+        <div class="label" style="color:var(--green-text)">65–79 Very good</div>
+        <div class="desc">Strong conditions. High probability of a worthwhile shoot.</div>
+      </div>
+      <div class="meaning-card">
+        <div class="label" style="color:var(--amber-text)">50–64 Fair</div>
+        <div class="desc">Conditions are partially favorable. Monitor the evening before.</div>
+      </div>
+      <div class="meaning-card">
+        <div class="label" style="color:var(--coral-text)">30–49 Marginal</div>
+        <div class="desc">One or more key factors are off. May still deliver something.</div>
+      </div>
+      <div class="meaning-card">
+        <div class="label" style="color:var(--gray-text)">0–29 Poor</div>
+        <div class="desc">Conditions are not aligned. Skip unless you need the location.</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- The four tabs -->
+  <div class="section">
+    <h2>The four forecast tabs</h2>
+
+    <div class="card">
+      <h3>🌅 Sunrise color</h3>
+      <p>Scores the probability of vivid color during the golden hour window (45 min before to 75 min after sunrise). The key factors are low cloud coverage between 20–75% (broken clouds that catch light from below), humidity, and mid/high cloud structure. A completely clear sky scores low — there's nothing to paint. A fully overcast sky also scores low — the light can't get through.</p>
+      <p>The detail panel shows exact sunrise time, the scoring window, blue hour and golden hour times, and moonrise for reference.</p>
+      <div class="tip">The "Smoulder zone" badge means low cloud coverage is in the 40–75% sweet spot — the classic condition for vivid orange skies on the Sonoma Coast.</div>
+    </div>
+
+    <div class="card">
+      <h3>🌇 Sunset color</h3>
+      <p>Same logic as sunrise, applied to the sunset window (90 min before to 45 min after sunset). Coastal locations get a bonus for the marine stratus pattern — broken low cloud over the Pacific at sunset is one of the most reliable color producers on this coastline.</p>
+      <p>The "Painter's sky" badge marks the premium pattern: dense high cirrus (which diffuses warm light across the whole sky) combined with broken low clouds that catch fire from below.</p>
+    </div>
+
+    <div class="card">
+      <h3>★ Stars</h3>
+      <p>Scores astrophotography conditions for the night following the selected day. The score reflects cloud cover in the best 4-hour stretch of the dark window, moon phase and illumination, moon-free hours, humidity, and light pollution (Bortle scale). A full moon will crush the score regardless of sky clarity.</p>
+      <p>The Milky Way core window shows the hours when the galactic center is above 10° and — critically — whether the moon is up during that window. "Moon-lit" means the core is geometrically visible but the moon prevents dark-sky shooting. "Moon-free" means a genuine window exists.</p>
+      <div class="tip">Preset locations have hand-coded Bortle values. Salt Point SP is Bortle 2 (genuinely dark). Custom searched locations default to Bortle 5 — treat those estimates cautiously.</div>
+    </div>
+
+    <div class="card">
+      <h3>☁ Fog</h3>
+      <p>Scores the probability of radiation fog or marine stratus between 3–10 AM. The primary drivers are the dewpoint-temperature spread (below 3°C/5°F strongly favors fog), humidity above 80%, and calm winds. Coastal locations get a bonus for the marine layer pattern.</p>
+      <p>If you're at a ridge location (like Mercuryville), a high fog score means a sea-of-clouds opportunity below you — not fog at your feet. The detail panel and verdict text will note this explicitly.</p>
+    </div>
+  </div>
+
+  <!-- Key terms -->
+  <div class="section">
+    <h2>Key terms explained</h2>
+    <div class="term-list">
+      <div class="term-row">
+        <span class="term-name">D-P spread</span>
+        <span class="term-desc">Dewpoint-temperature spread. When this is below 3°F (1.7°C), the air is nearly saturated and fog is likely. Above 10°F means dry air and no fog. The single most useful fog predictor.</span>
+      </div>
+      <div class="term-row">
+        <span class="term-name">Score window</span>
+        <span class="term-desc">The exact time range used to calculate the sunrise or sunset score. Sunrise: 45 min before to 75 min after. Sunset: 90 min before to 45 min after.</span>
+      </div>
+      <div class="term-row">
+        <span class="term-name">Blue hour</span>
+        <span class="term-desc">The ~30 minutes before sunrise or after sunset when the sky is deeply blue and light is soft and even. Excellent for seascape and landscape work that doesn't need golden light.</span>
+      </div>
+      <div class="term-row">
+        <span class="term-name">Golden hour</span>
+        <span class="term-desc">The ~54 minutes after sunrise or before sunset when the sun is low and light is warm and directional. The primary scoring target for color potential.</span>
+      </div>
+      <div class="term-row">
+        <span class="term-name">Bortle scale</span>
+        <span class="term-desc">A 1–9 measure of night sky darkness. Bortle 1 is pristine dark sky (rare). Bortle 9 is inner-city sky. For Milky Way core photography, Bortle 4 or below is desirable. Salt Point SP (Bortle 2) and Mercuryville (Bortle 3) are your best options in this region.</span>
+      </div>
+      <div class="term-row">
+        <span class="term-name">MW core window</span>
+        <span class="term-desc">The hours when the galactic center (Sagittarius direction) is above 10° altitude at your location AND it's dark enough to shoot. Intersected with the moon-free window to show actual usable hours.</span>
+      </div>
+      <div class="term-row">
+        <span class="term-name">Smoulder zone</span>
+        <span class="term-desc">40–75% low cloud coverage — the sweet spot where clouds are broken enough to let light through but dense enough to catch and scatter color. The best badge to see on a sunrise or sunset forecast.</span>
+      </div>
+      <div class="term-row">
+        <span class="term-name">AQI badge</span>
+        <span class="term-desc">Air Quality Index. When wildfire smoke is present, a low AQI (under 50) may actually enhance warm tones. Above 100 starts to degrade color saturation and visibility significantly.</span>
+      </div>
+    </div>
+  </div>
+
+  <!-- How to use it -->
+  <div class="section">
+    <h2>How to use it — a practical workflow</h2>
+    <div class="steps">
+      <div class="step">
+        <div class="step-num">1</div>
+        <div class="step-text"><strong>Pick your location.</strong> Use the Quick Picks for the preset Sonoma Coast spots, search any city or zip code worldwide, or save your own spots under My Locations. <span>Locations persist across sessions.</span></div>
+      </div>
+      <div class="step">
+        <div class="step-num">2</div>
+        <div class="step-text"><strong>Scan the 7-day cards.</strong> The bars and scores give you an at-a-glance picture of the week. Look for the tab you care about highlighted in green. <span>The active tab is shown at full opacity; others are dimmed.</span></div>
+      </div>
+      <div class="step">
+        <div class="step-num">3</div>
+        <div class="step-text"><strong>Tap a day to read the detail panel.</strong> Check the verdict text — it describes the specific sky pattern, not just a score tier. Check the metric cards for exact times and cloud layer breakdown.</div>
+      </div>
+      <div class="step">
+        <div class="step-num">4</div>
+        <div class="step-text"><strong>Expand the hourly cloud detail.</strong> The collapsible table at the bottom shows cloud cover hour-by-hour around the golden hour window. Rows highlighted in blue are inside the scoring window. <span>This is where you spot last-minute shifts.</span></div>
+      </div>
+      <div class="step">
+        <div class="step-num">5</div>
+        <div class="step-text"><strong>Check again the evening before.</strong> Model accuracy drops beyond 3–4 days. Always recheck the night before a shoot, especially for fog which can form or dissipate within hours.</div>
+      </div>
+      <div class="step">
+        <div class="step-num">6</div>
+        <div class="step-text"><strong>Report back.</strong> Use the "Report what you actually saw" button at the bottom of any detail panel to send feedback. This helps improve the scoring over time.</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Locations -->
+  <div class="section">
+    <h2>Preset locations</h2>
+    <div class="term-list">
+      <div class="term-row">
+        <span class="term-name">Jenner</span>
+        <span class="term-desc">Russian River mouth, coastal. Marine stratus patterns are common. Fog pools in the river canyon at sunrise. Elevation pullouts above town give sea-of-clouds views.</span>
+      </div>
+      <div class="term-row">
+        <span class="term-name">Salt Point SP</span>
+        <span class="term-desc">Rocky coast, Bortle 2. Tafoni sandstone formations make excellent foreground. Best dark sky coastal location. Marine layer is the main risk for astrophotography.</span>
+      </div>
+      <div class="term-row">
+        <span class="term-name">Mercuryville</span>
+        <span class="term-desc">2,720 ft ridge, Bortle 3. Sits above the marine layer on most mornings. A high fog score here means a sea-of-clouds opportunity below you, not fog at your feet. Best overall dark sky site in the region.</span>
+      </div>
+      <div class="term-row">
+        <span class="term-name">Geyserville</span>
+        <span class="term-desc">Alexander Valley floor, Bortle 4. Vineyard rows at first light with the Mayacamas Mountains catching alpenglow. Valley radiation fog is common in autumn and winter mornings.</span>
+      </div>
+    </div>
+  </div>
+
+  <!-- Limitations -->
+  <div class="section">
+    <h2>Limitations &amp; honest caveats</h2>
+    <div class="card">
+      <p><strong>Scores are estimates, not guarantees.</strong> They are based on weather model output which has known limitations — especially for fog, which can form or dissipate within an hour based on local terrain effects no model captures well. Always verify conditions yourself before committing to a long drive.</p>
+      <p><strong>Forecast accuracy degrades beyond 3–4 days.</strong> Days 5–7 are useful for spotting trends and blocking your calendar, but treat them as rough guidance rather than reliable predictions.</p>
+      <p><strong>Milky Way core visibility is geometry + weather combined.</strong> The tool calculates when the galactic center is above 10° altitude and intersects that with the dark and moon-free window. It does not account for horizon obstructions like mountains or trees at your specific shooting spot.</p>
+      <p><strong>Light pollution for custom locations is estimated.</strong> Preset locations have hand-verified Bortle values. Any location you search defaults to Bortle 5 (suburban sky). For accurate light pollution at a custom location, cross-reference with <a href="https://www.lightpollutionmap.info" target="_blank" style="color:var(--blue-text)">lightpollutionmap.info</a>.</p>
+      <p><strong>AQI data may not always load.</strong> Air quality comes from a separate API and is optional — if it fails, the forecast still works normally without smoke badges.</p>
+    </div>
+  </div>
+
+  <!-- Tips -->
+  <div class="section">
+    <h2>Tips from the field</h2>
+    <div class="steps">
+      <div class="step">
+        <div class="step-num">💡</div>
+        <div class="step-text"><strong>A 65 with "Smoulder zone" beats an 80 with "Clear sky."</strong> Cloud pattern matters more than the combined score for color. A broken marine layer at the coast at sunset is more reliable than a theoretically high-scoring clear day.</div>
+      </div>
+      <div class="step">
+        <div class="step-num">💡</div>
+        <div class="step-text"><strong>For fog, arrive 30–45 minutes before the window opens.</strong> Radiation fog peaks around first light and burns off fast. Arriving at 7 AM when the fog window was 4–7 AM means you probably missed it.</div>
+      </div>
+      <div class="step">
+        <div class="step-num">💡</div>
+        <div class="step-text"><strong>Mercuryville on a high fog day is a sea-of-clouds shoot.</strong> You're at 2,720 ft — above the inversion layer. Check both the fog score (is the sea of clouds there?) and the sunrise score (will the light be good on top of it?).</div>
+      </div>
+      <div class="step">
+        <div class="step-num">💡</div>
+        <div class="step-text"><strong>For stars, dark window length matters as much as the score.</strong> A 6h moon-free window scoring 50 is often more useful than a 1.5h window scoring 75. Check the "Dark window" metric card, not just the headline number.</div>
+      </div>
+      <div class="step">
+        <div class="step-num">💡</div>
+        <div class="step-text"><strong>Light smoke can enhance color.</strong> AQI 50–80 adds warm atmospheric scattering that deepens reds at golden hour. Above 100 degrades color and visibility significantly. The smoke note in the detail panel flags both cases.</div>
+      </div>
+      <div class="step">
+        <div class="step-num">💡</div>
+        <div class="step-text"><strong>The hourly cloud table is your last-minute check.</strong> Expand it the night before. The ★-marked rows are inside the golden hour window. Low clouds trending from 60% down to 20% through the window is a clearing pattern — often better than the daily average suggests.</div>
+      </div>
+    </div>
+  </div>
+
+  <hr>
+
+  <div class="section">
+    <h2>Data sources</h2>
+    <div class="term-list">
+      <div class="term-row">
+        <span class="term-name">Weather</span>
+        <span class="term-desc"><a href="https://open-meteo.com" target="_blank" style="color:var(--blue-text)">Open-Meteo</a> — free, no API key. 7-day hourly forecast including cloud layers at low/mid/high altitude, temperature, dewpoint, humidity, wind, and precipitation.</span>
+      </div>
+      <div class="term-row">
+        <span class="term-name">Air quality</span>
+        <span class="term-desc"><a href="https://open-meteo.com" target="_blank" style="color:var(--blue-text)">Open-Meteo Air Quality API</a> — US AQI forecast. Optional — the tool works without it.</span>
+      </div>
+      <div class="term-row">
+        <span class="term-name">Geocoding</span>
+        <span class="term-desc"><a href="https://nominatim.openstreetmap.org" target="_blank" style="color:var(--blue-text)">OpenStreetMap Nominatim</a> — powers the city search. © OpenStreetMap contributors.</span>
+      </div>
+      <div class="term-row">
+        <span class="term-name">Sun &amp; moon</span>
+        <span class="term-desc">SunCalc (inline, adapted from Vladimir Agafonkin's BSD-licensed library) — sunrise, sunset, astronomical twilight, moon phase, moonrise and moonset.</span>
+      </div>
+      <div class="term-row">
+        <span class="term-name">Milky Way</span>
+        <span class="term-desc">Computed from first principles using galactic core RA/Dec and local sidereal time. No external API.</span>
+      </div>
+    </div>
+  </div>
+
+  <footer>
+    Photographer's Forecast · Built for <a href="https://rjfineart.com" target="_blank">LadyBugFarm Images</a> ·
+    Scores are model-based estimates — real skies vary. Not liable for forecast errors.
+  </footer>
+
+</div>
+</body>
+</html>
