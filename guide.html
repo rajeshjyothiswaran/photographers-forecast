@@ -1,3 +1,4 @@
+
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -62,23 +63,15 @@
 
   .container { max-width: 680px; margin: 0 auto; }
 
-  /* Header */
   .guide-header {
     margin-bottom: 2.5rem;
     padding-bottom: 1.5rem;
     border-bottom: 0.5px solid var(--border);
   }
-  .guide-header h1 {
-    font-size: 22px; font-weight: 500; margin-bottom: 4px;
-  }
-  .guide-header .subtitle {
-    font-size: 13px; color: var(--text-secondary);
-  }
-  .guide-header .subtitle a {
-    color: var(--blue-text); text-decoration: none;
-  }
+  .guide-header h1 { font-size: 22px; font-weight: 500; margin-bottom: 4px; }
+  .guide-header .subtitle { font-size: 13px; color: var(--text-secondary); }
+  .guide-header .subtitle a { color: var(--blue-text); text-decoration: none; }
 
-  /* Section */
   .section { margin-bottom: 2rem; }
   .section h2 {
     font-size: 12px; font-weight: 600; letter-spacing: 0.06em;
@@ -86,24 +79,16 @@
     margin-bottom: 0.75rem;
   }
 
-  /* Card */
   .card {
     background: var(--bg); border: 0.5px solid var(--border);
     border-radius: var(--radius); padding: 1rem 1.125rem;
     margin-bottom: 0.5rem;
   }
-  .card h3 {
-    font-size: 14px; font-weight: 500; margin-bottom: 6px;
-  }
-  .card p {
-    font-size: 13px; color: var(--text-secondary); line-height: 1.6;
-  }
+  .card h3 { font-size: 14px; font-weight: 500; margin-bottom: 6px; }
+  .card p { font-size: 13px; color: var(--text-secondary); line-height: 1.6; }
   .card p + p { margin-top: 6px; }
 
-  /* Score chips */
-  .score-row {
-    display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 0.75rem;
-  }
+  .score-row { display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 0.75rem; }
   .chip {
     display: inline-flex; align-items: center; gap: 5px;
     padding: 4px 11px; border-radius: 6px;
@@ -115,7 +100,6 @@
   .chip.gray   { background: var(--gray-bg);   color: var(--gray-text);  }
   .chip.blue   { background: var(--blue-bg);   color: var(--blue-text);  }
 
-  /* Inline tip */
   .tip {
     padding: 9px 13px; border-radius: var(--radius);
     font-size: 12px; line-height: 1.55;
@@ -124,39 +108,25 @@
     margin-top: 0.5rem;
   }
 
-  /* Two-col grid for score meanings */
-  .meaning-grid {
-    display: grid; grid-template-columns: 1fr 1fr; gap: 6px;
-  }
+  .meaning-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 6px; }
   @media (max-width: 480px) { .meaning-grid { grid-template-columns: 1fr; } }
 
   .meaning-card {
     background: var(--bg); border: 0.5px solid var(--border);
     border-radius: var(--radius); padding: 10px 12px;
   }
-  .meaning-card .label {
-    font-size: 11px; font-weight: 600; margin-bottom: 3px;
-  }
-  .meaning-card .desc {
-    font-size: 12px; color: var(--text-secondary); line-height: 1.5;
-  }
+  .meaning-card .label { font-size: 11px; font-weight: 600; margin-bottom: 3px; }
+  .meaning-card .desc { font-size: 12px; color: var(--text-secondary); line-height: 1.5; }
 
-  /* Term list */
   .term-list { display: flex; flex-direction: column; gap: 6px; }
   .term-row {
     background: var(--bg); border: 0.5px solid var(--border);
     border-radius: var(--radius); padding: 10px 12px;
     display: flex; gap: 10px; align-items: flex-start;
   }
-  .term-name {
-    font-size: 12px; font-weight: 600; min-width: 100px;
-    color: var(--text); flex-shrink: 0;
-  }
-  .term-desc {
-    font-size: 12px; color: var(--text-secondary); line-height: 1.5;
-  }
+  .term-name { font-size: 12px; font-weight: 600; min-width: 110px; color: var(--text); flex-shrink: 0; }
+  .term-desc { font-size: 12px; color: var(--text-secondary); line-height: 1.5; }
 
-  /* Steps */
   .steps { display: flex; flex-direction: column; gap: 6px; }
   .step {
     background: var(--bg); border: 0.5px solid var(--border);
@@ -174,7 +144,6 @@
   .step-text strong { font-weight: 500; }
   .step-text span { color: var(--text-secondary); font-size: 12px; }
 
-  /* Footer */
   footer {
     margin-top: 3rem; text-align: center;
     font-size: 11px; color: var(--text-secondary);
@@ -189,7 +158,7 @@
 
   <div class="guide-header">
     <h1>Photographer's Forecast — User Guide</h1>
-    <p class="subtitle">A planning tool for golden hour color, fog, stars &amp; dark skies ·
+    <p class="subtitle">A planning tool for golden hour color, fog, stars, dark skies &amp; tides ·
       Built for <a href="https://rjfineart.com" target="_blank">LadyBugFarm Images</a>
     </p>
   </div>
@@ -199,6 +168,7 @@
     <h2>What this tool does</h2>
     <div class="card">
       <p>Photographer's Forecast pulls 7-day weather model data and scores each day on four things photographers care about: <strong>sunrise color potential</strong>, <strong>sunset color potential</strong>, <strong>clear skies for stars</strong>, and <strong>fog formation</strong>. Scores run from 0–100 — they are not percentages. Think of them as a confidence rating: 80+ means conditions are strongly aligned, 30 and below means it's probably not worth the drive.</p>
+      <p>For coastal locations, a <strong>tide chart</strong> automatically appears at the bottom of the detail panel showing the full day's tide curve, high/low times, and approximate sunrise/sunset markers — so you can plan your shoot around both light and water level.</p>
       <p>It does not replace checking conditions the evening before. Use it to identify the days worth watching, then confirm closer to the time.</p>
     </div>
   </div>
@@ -268,6 +238,95 @@
     </div>
   </div>
 
+  <!-- Tides -->
+  <div class="section">
+    <h2>🌊 Tide chart</h2>
+    <div class="card">
+      <h3>How it works</h3>
+      <p>For any coastal location — whether a preset, a saved spot, or a city you've searched — a tide chart automatically appears at the bottom of the detail panel. The tool finds the nearest tide station and shows the full tide curve for that day, with high/low markers and approximate sunrise and sunset times overlaid.</p>
+      <p>This lets you answer the most important coastal planning question at a glance: what is the tide doing during golden hour?</p>
+    </div>
+    <div class="card">
+      <h3>Reading the chart</h3>
+      <p>The curve shows water height in feet (MLLW datum) across a full 24-hour day. Green dots mark high tides, orange dots mark low tides. The 🌅 and 🌇 dashed lines mark approximate sunrise and sunset times so you can see exactly where the tide is during your shooting window.</p>
+      <p>Below the chart, a table lists each high and low with its exact time and height. Heights can go slightly negative — that means the water is below the average low water line, which often means bonus beach or reef exposure.</p>
+    </div>
+    <div class="card">
+      <h3>Data sources</h3>
+      <p><strong>US locations</strong> use <a href="https://tidesandcurrents.noaa.gov" target="_blank" style="color:var(--blue-text)">NOAA Tides &amp; Currents</a> — the official US government harmonic tide prediction service. Free and highly accurate. The station name and data source are shown below the chart.</p>
+      <p><strong>International locations</strong> use <a href="https://tidecheck.com" target="_blank" style="color:var(--blue-text)">TideCheck</a>, which covers 20,000+ stations across 200+ countries using NOAA, TICON-4, and FES2022 data. The chart footer will show "TideCheck" for these locations.</p>
+      <div class="tip">Tides are only shown when the nearest station is within 60km. For inland locations like Geyserville or Mercuryville, the tide section is silently hidden — it's not relevant there.</div>
+    </div>
+    <div class="card">
+      <h3>Planning for shore photography</h3>
+      <p>Low tide at golden hour is usually the most interesting — more beach, more rocks, tide pools exposed, and reflective wet sand. A falling tide during golden hour is often better than a rising one as it leaves wet reflective surfaces. Extremely low tides (negative values) expose formations that are normally underwater.</p>
+      <p>High tide at sunset can be dramatic for wave action against cliffs or rocks, but reduces foreground options significantly.</p>
+    </div>
+  </div>
+
+  <!-- Locations -->
+  <div class="section">
+    <h2>My Locations</h2>
+    <div class="card">
+      <p>All your shooting locations live in one unified <strong>My Locations</strong> section at the top of the page. Four default spots are pre-loaded (Jenner, Salt Point SP, Mercuryville, Geyserville) but every location is editable — you can remove any of the defaults and replace them with your own.</p>
+      <p>To add a location: search any city, zip code, or place name → select from the dropdown → click <strong>Save to My Locations</strong>. Saved locations persist across sessions in your browser.</p>
+      <p>To remove a location: hover over any card and click the ✕ that appears in the top right corner.</p>
+    </div>
+    <div class="term-list">
+      <div class="term-row">
+        <span class="term-name">Jenner</span>
+        <span class="term-desc">Russian River mouth, coastal. Marine stratus patterns are common. Fog pools in the river canyon at sunrise. Elevation pullouts above town give sea-of-clouds views.</span>
+      </div>
+      <div class="term-row">
+        <span class="term-name">Salt Point SP</span>
+        <span class="term-desc">Rocky coast, Bortle 2. Tafoni sandstone formations make excellent foreground. Best dark sky coastal location. Marine layer is the main risk for astrophotography.</span>
+      </div>
+      <div class="term-row">
+        <span class="term-name">Mercuryville</span>
+        <span class="term-desc">2,720 ft ridge, Bortle 3. Sits above the marine layer on most mornings. A high fog score here means a sea-of-clouds opportunity below you, not fog at your feet. Best overall dark sky site in the region.</span>
+      </div>
+      <div class="term-row">
+        <span class="term-name">Geyserville</span>
+        <span class="term-desc">Alexander Valley floor, Bortle 4. Vineyard rows at first light with the Mayacamas Mountains catching alpenglow. Valley radiation fog is common in autumn and winter mornings.</span>
+      </div>
+    </div>
+  </div>
+
+  <!-- How to use it -->
+  <div class="section">
+    <h2>How to use it — a practical workflow</h2>
+    <div class="steps">
+      <div class="step">
+        <div class="step-num">1</div>
+        <div class="step-text"><strong>Pick your location.</strong> Choose from My Locations, search any city, zip code, or place worldwide, or enter lat/lon manually. <span>Your locations and the last-viewed location persist across sessions.</span></div>
+      </div>
+      <div class="step">
+        <div class="step-num">2</div>
+        <div class="step-text"><strong>Scan the 7-day cards.</strong> The bars and scores give you an at-a-glance picture of the week. Look for the tab you care about highlighted in green. <span>The active tab is shown at full opacity; others are dimmed.</span></div>
+      </div>
+      <div class="step">
+        <div class="step-num">3</div>
+        <div class="step-text"><strong>Tap a day to read the detail panel.</strong> Check the verdict text — it describes the specific sky pattern, not just a score tier. Check the metric cards for exact times and cloud layer breakdown.</div>
+      </div>
+      <div class="step">
+        <div class="step-num">4</div>
+        <div class="step-text"><strong>Check the tide chart for coastal locations.</strong> Scroll to the bottom of the detail panel. See where the tide sits during your shooting window, whether it's rising or falling, and how exposed the beach will be at golden hour.</div>
+      </div>
+      <div class="step">
+        <div class="step-num">5</div>
+        <div class="step-text"><strong>Expand the hourly cloud detail.</strong> The collapsible table shows cloud cover hour-by-hour around the golden hour window. Rows highlighted in blue are inside the scoring window. <span>This is where you spot last-minute shifts.</span></div>
+      </div>
+      <div class="step">
+        <div class="step-num">6</div>
+        <div class="step-text"><strong>Check again the evening before.</strong> Model accuracy drops beyond 3–4 days. Always recheck the night before a shoot, especially for fog which can form or dissipate within hours.</div>
+      </div>
+      <div class="step">
+        <div class="step-num">7</div>
+        <div class="step-text"><strong>Report back.</strong> Use the "Report what you actually saw" button at the bottom of any detail panel to send feedback. This helps improve the scoring over time.</div>
+      </div>
+    </div>
+  </div>
+
   <!-- Key terms -->
   <div class="section">
     <h2>Key terms explained</h2>
@@ -304,72 +363,10 @@
         <span class="term-name">AQI badge</span>
         <span class="term-desc">Air Quality Index. When wildfire smoke is present, a low AQI (under 50) may actually enhance warm tones. Above 100 starts to degrade color saturation and visibility significantly.</span>
       </div>
-    </div>
-  </div>
-
-  <!-- How to use it -->
-  <div class="section">
-    <h2>How to use it — a practical workflow</h2>
-    <div class="steps">
-      <div class="step">
-        <div class="step-num">1</div>
-        <div class="step-text"><strong>Pick your location.</strong> Use the Quick Picks for the preset Sonoma Coast spots, search any city or zip code worldwide, or save your own spots under My Locations. <span>Locations persist across sessions.</span></div>
-      </div>
-      <div class="step">
-        <div class="step-num">2</div>
-        <div class="step-text"><strong>Scan the 7-day cards.</strong> The bars and scores give you an at-a-glance picture of the week. Look for the tab you care about highlighted in green. <span>The active tab is shown at full opacity; others are dimmed.</span></div>
-      </div>
-      <div class="step">
-        <div class="step-num">3</div>
-        <div class="step-text"><strong>Tap a day to read the detail panel.</strong> Check the verdict text — it describes the specific sky pattern, not just a score tier. Check the metric cards for exact times and cloud layer breakdown.</div>
-      </div>
-      <div class="step">
-        <div class="step-num">4</div>
-        <div class="step-text"><strong>Expand the hourly cloud detail.</strong> The collapsible table at the bottom shows cloud cover hour-by-hour around the golden hour window. Rows highlighted in blue are inside the scoring window. <span>This is where you spot last-minute shifts.</span></div>
-      </div>
-      <div class="step">
-        <div class="step-num">5</div>
-        <div class="step-text"><strong>Check again the evening before.</strong> Model accuracy drops beyond 3–4 days. Always recheck the night before a shoot, especially for fog which can form or dissipate within hours.</div>
-      </div>
-      <div class="step">
-        <div class="step-num">6</div>
-        <div class="step-text"><strong>Report back.</strong> Use the "Report what you actually saw" button at the bottom of any detail panel to send feedback. This helps improve the scoring over time.</div>
-      </div>
-    </div>
-  </div>
-
-  <!-- Locations -->
-  <div class="section">
-    <h2>Preset locations</h2>
-    <div class="term-list">
       <div class="term-row">
-        <span class="term-name">Jenner</span>
-        <span class="term-desc">Russian River mouth, coastal. Marine stratus patterns are common. Fog pools in the river canyon at sunrise. Elevation pullouts above town give sea-of-clouds views.</span>
+        <span class="term-name">MLLW datum</span>
+        <span class="term-desc">Mean Lower Low Water — the reference level used for tide heights. Zero means average low water. Negative values mean the tide is below average low water, which exposes more beach and reef than usual.</span>
       </div>
-      <div class="term-row">
-        <span class="term-name">Salt Point SP</span>
-        <span class="term-desc">Rocky coast, Bortle 2. Tafoni sandstone formations make excellent foreground. Best dark sky coastal location. Marine layer is the main risk for astrophotography.</span>
-      </div>
-      <div class="term-row">
-        <span class="term-name">Mercuryville</span>
-        <span class="term-desc">2,720 ft ridge, Bortle 3. Sits above the marine layer on most mornings. A high fog score here means a sea-of-clouds opportunity below you, not fog at your feet. Best overall dark sky site in the region.</span>
-      </div>
-      <div class="term-row">
-        <span class="term-name">Geyserville</span>
-        <span class="term-desc">Alexander Valley floor, Bortle 4. Vineyard rows at first light with the Mayacamas Mountains catching alpenglow. Valley radiation fog is common in autumn and winter mornings.</span>
-      </div>
-    </div>
-  </div>
-
-  <!-- Limitations -->
-  <div class="section">
-    <h2>Limitations &amp; honest caveats</h2>
-    <div class="card">
-      <p><strong>Scores are estimates, not guarantees.</strong> They are based on weather model output which has known limitations — especially for fog, which can form or dissipate within an hour based on local terrain effects no model captures well. Always verify conditions yourself before committing to a long drive.</p>
-      <p><strong>Forecast accuracy degrades beyond 3–4 days.</strong> Days 5–7 are useful for spotting trends and blocking your calendar, but treat them as rough guidance rather than reliable predictions.</p>
-      <p><strong>Milky Way core visibility is geometry + weather combined.</strong> The tool calculates when the galactic center is above 10° altitude and intersects that with the dark and moon-free window. It does not account for horizon obstructions like mountains or trees at your specific shooting spot.</p>
-      <p><strong>Light pollution for custom locations is estimated.</strong> Preset locations have hand-verified Bortle values. Any location you search defaults to Bortle 5 (suburban sky). For accurate light pollution at a custom location, cross-reference with <a href="https://www.lightpollutionmap.info" target="_blank" style="color:var(--blue-text)">lightpollutionmap.info</a>.</p>
-      <p><strong>AQI data may not always load.</strong> Air quality comes from a separate API and is optional — if it fails, the forecast still works normally without smoke badges.</p>
     </div>
   </div>
 
@@ -395,12 +392,33 @@
       </div>
       <div class="step">
         <div class="step-num">💡</div>
+        <div class="step-text"><strong>Low tide + golden hour is the sweet spot for shore photography.</strong> Check the tide chart for the day you're planning. A falling tide during the golden hour window leaves wet reflective sand and exposes more foreground rocks and pools.</div>
+      </div>
+      <div class="step">
+        <div class="step-num">💡</div>
+        <div class="step-text"><strong>Negative tides unlock locations.</strong> When the chart shows values below 0 ft, formations that are normally submerged become accessible. These are often the best mornings for tide pool and reef photography.</div>
+      </div>
+      <div class="step">
+        <div class="step-num">💡</div>
         <div class="step-text"><strong>Light smoke can enhance color.</strong> AQI 50–80 adds warm atmospheric scattering that deepens reds at golden hour. Above 100 degrades color and visibility significantly. The smoke note in the detail panel flags both cases.</div>
       </div>
       <div class="step">
         <div class="step-num">💡</div>
         <div class="step-text"><strong>The hourly cloud table is your last-minute check.</strong> Expand it the night before. The ★-marked rows are inside the golden hour window. Low clouds trending from 60% down to 20% through the window is a clearing pattern — often better than the daily average suggests.</div>
       </div>
+    </div>
+  </div>
+
+  <!-- Limitations -->
+  <div class="section">
+    <h2>Limitations &amp; honest caveats</h2>
+    <div class="card">
+      <p><strong>Scores are estimates, not guarantees.</strong> They are based on weather model output which has known limitations — especially for fog, which can form or dissipate within an hour based on local terrain effects no model captures well. Always verify conditions yourself before committing to a long drive.</p>
+      <p><strong>Forecast accuracy degrades beyond 3–4 days.</strong> Days 5–7 are useful for spotting trends and blocking your calendar, but treat them as rough guidance rather than reliable predictions.</p>
+      <p><strong>Tide predictions are for planning only.</strong> Tide data comes from harmonic models and is not suitable for navigation or safety decisions. Always check official local sources before entering the water or accessing coastal areas.</p>
+      <p><strong>Milky Way core visibility is geometry + weather combined.</strong> The tool calculates when the galactic center is above 10° altitude and intersects that with the dark and moon-free window. It does not account for horizon obstructions like mountains or trees at your specific shooting spot.</p>
+      <p><strong>Light pollution for custom locations is estimated.</strong> Preset locations have hand-verified Bortle values. Any location you search defaults to Bortle 5 (suburban sky). For accurate light pollution at a custom location, cross-reference with <a href="https://www.lightpollutionmap.info" target="_blank" style="color:var(--blue-text)">lightpollutionmap.info</a>.</p>
+      <p><strong>AQI data may not always load.</strong> Air quality comes from a separate API and is optional — if it fails, the forecast still works normally without smoke badges.</p>
     </div>
   </div>
 
@@ -411,7 +429,7 @@
     <div class="term-list">
       <div class="term-row">
         <span class="term-name">Weather</span>
-        <span class="term-desc"><a href="https://open-meteo.com" target="_blank" style="color:var(--blue-text)">Open-Meteo</a> — free, no API key. 7-day hourly forecast including cloud layers at low/mid/high altitude, temperature, dewpoint, humidity, wind, and precipitation.</span>
+        <span class="term-desc"><a href="https://open-meteo.com" target="_blank" style="color:var(--blue-text)">Open-Meteo</a> — free, no API key. 7-day hourly forecast including cloud layers, temperature, dewpoint, humidity, wind, and precipitation.</span>
       </div>
       <div class="term-row">
         <span class="term-name">Air quality</span>
@@ -420,6 +438,14 @@
       <div class="term-row">
         <span class="term-name">Geocoding</span>
         <span class="term-desc"><a href="https://nominatim.openstreetmap.org" target="_blank" style="color:var(--blue-text)">OpenStreetMap Nominatim</a> — powers the city search. © OpenStreetMap contributors.</span>
+      </div>
+      <div class="term-row">
+        <span class="term-name">US tides</span>
+        <span class="term-desc"><a href="https://tidesandcurrents.noaa.gov" target="_blank" style="color:var(--blue-text)">NOAA Tides &amp; Currents</a> — official US harmonic tide predictions. Free, no API key required. Used for all US coastal locations within 60km of a NOAA station.</span>
+      </div>
+      <div class="term-row">
+        <span class="term-name">Intl tides</span>
+        <span class="term-desc"><a href="https://tidecheck.com" target="_blank" style="color:var(--blue-text)">TideCheck</a> — global tide predictions for 20,000+ stations in 200+ countries. Used for international coastal locations outside NOAA coverage. Data sourced from TICON-4 (CC-BY-4.0) and FES2022.</span>
       </div>
       <div class="term-row">
         <span class="term-name">Sun &amp; moon</span>
@@ -434,7 +460,7 @@
 
   <footer>
     Photographer's Forecast · Built for <a href="https://rjfineart.com" target="_blank">LadyBugFarm Images</a> ·
-    Scores are model-based estimates — real skies vary. Not liable for forecast errors.
+    Scores are model-based estimates — real skies vary. Tide predictions for planning only, not navigation. Not liable for forecast errors.
   </footer>
 
 </div>
