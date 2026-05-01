@@ -1,13 +1,19 @@
 {
   "name": "Halcyon",
   "short_name": "Halcyon",
-  "description": "The photographer's forecast \u2014 golden hour color, fog, stars & tides, worldwide.",
+  "description": "The photographer's forecast for golden hour color, fog, stars and tides worldwide.",
   "start_url": "/",
   "scope": "/",
   "display": "standalone",
   "orientation": "portrait-primary",
   "background_color": "#091828",
   "theme_color": "#091828",
+  "lang": "en-US",
+  "categories": [
+    "photography",
+    "weather",
+    "utilities"
+  ],
   "icons": [
     {
       "src": "/icons/icon-192.png",
@@ -33,11 +39,5 @@
       "type": "image/png",
       "purpose": "maskable"
     }
-  ],
-  "categories": [
-    "photography",
-    "weather",
-    "utilities"
-  ],
-  "lang": "en-US"
+  ]
 }
