@@ -4,12 +4,12 @@
 
 const CACHE = 'halcyon-v1';
 const SHELL = [
-  '/photographers-forecast/',
-  '/photographers-forecast/index.html',
-  '/photographers-forecast/guide.html',
-  '/photographers-forecast/icons/icon-192.png',
-  '/photographers-forecast/icons/icon-512.png',
-  '/photographers-forecast/icons/apple-touch-icon.png',
+  '/',
+  '/index.html',
+  '/guide.html',
+  '/icons/icon-192.png',
+  '/icons/icon-512.png',
+  '/icons/apple-touch-icon.png',
 ];
 
 // Install: cache the app shell
