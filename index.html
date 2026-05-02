@@ -1948,34 +1948,15 @@ function kpLabel(kp) {
 
 async function fetchKpForecast() {
   if (auroraCache && (Date.now() - auroraCacheTime) < AURORA_CACHE_MS) return auroraCache;
-  // Try auroraforecast.space first — browser-friendly CORS
-  try {
-    const res = await fetch('https://auroraforecast.space/api/kp/forecast');
-    if (!res.ok) throw new Error('auroraforecast API error');
-    const data = await res.json();
-    // Convert {x: ["Aug 01 00-03",...], y: [3,2,...]} to NOAA-like format
-    if (data && data.x && data.y) {
-      const converted = data.x.map((label, i) => ({
-        time_tag: label,
-        kp_index: data.y[i] ?? 0
-      }));
-      auroraCache = converted;
-      auroraCacheTime = Date.now();
-      return converted;
-    }
-  } catch(e) {
-    console.warn('auroraforecast.space fetch failed:', e.message);
-  }
-  // Fallback: NOAA SWPC products endpoint
+  // NOAA SWPC products endpoint — supports CORS for browser requests
   try {
     const res = await fetch('https://services.swpc.noaa.gov/products/noaa-planetary-k-index-forecast.json');
     if (!res.ok) throw new Error('NOAA Kp API error');
     const data = await res.json();
-    // NOAA format: [[time_tag, kp, observed, noaa_scale], ...]
-    // Skip header row
+    // Format: [[time_tag, kp, observed, noaa_scale], ...] with header row first
     const converted = data.slice(1).map(row => ({
       time_tag: row[0],
-      kp_index: parseFloat(row[1])
+      kp_index: parseFloat(row[1]) || 0
     }));
     auroraCache = converted;
     auroraCacheTime = Date.now();
