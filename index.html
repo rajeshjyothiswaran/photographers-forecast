@@ -819,6 +819,11 @@ function loadMyLocs() {
           else loc.terrain = 'valley';
           changed = true;
         }
+        // Self-heal: if tagged coast but elevation > 100m, it's not coastal
+        if (loc.terrain === 'coast' && loc.elevation && loc.elevation > 100) {
+          loc.terrain = 'valley'; loc.type = 'valley';
+          changed = true;
+        }
       });
       if (changed) saveMyLocs(locs);
       return locs;
@@ -2438,6 +2443,8 @@ async function injectTideSection(detailPanelEl, day) {
   const activeLoc = activeLocIdx >= 0 ? myLocs[activeLocIdx] : null;
   const terrain = activeLoc ? (activeLoc.terrain || 'valley') : 'valley';
   if (terrain !== 'coast') return; // Not coastal — no tides
+  // Secondary elevation gate — if API reports > 100m elevation, can't be coastal
+  if (forecastData && forecastData.elevation > 100) return;
 
   const locCacheKey = `${lat.toFixed(4)}_${lon.toFixed(4)}`;
   let station = resolveStation(lat, lon, locCacheKey);
