@@ -2142,6 +2142,8 @@ function scoreLabel_aurora(s) {
 }
 
 // ── END AURORA FEATURE ────────────────────────────────────────────────────────
+
+function parseLocalISOTime(str) {
   if (!str) return null;
   const [datePart, timePart] = str.split('T');
   const [y, mo, d] = datePart.split('-').map(Number);
