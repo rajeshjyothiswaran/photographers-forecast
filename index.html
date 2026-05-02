@@ -645,6 +645,7 @@ function aqiColorNote(aqi) {
 const TIDECHECK_API_KEY = 'tc_live_5c360a266092a5ee22179cbfc6e70d42'; // TideCheck — international tide fallback
 
 // Default locations seeded into My Locations for first-time users
+// These are only used on first visit — after that, localStorage takes over
 const DEFAULT_LOCATIONS = [
   { name: 'Jenner',        lat: 38.45, lon: -123.12, type: 'coast',   terrain: 'coast',   note: 'Russian River mouth · coastal' },
   { name: 'Salt Point SP', lat: 38.57, lon: -123.33, type: 'coast',   terrain: 'coast',   note: 'Gerstle Cove · rocky coast' },
@@ -676,15 +677,12 @@ function autoDetectTerrain(elevation, tideDistKm, avgHumidity) {
   return null; // ambiguous — default to valley
 }
 
-// LOCATIONS still used for scoring type lookup on known presets
-const LOCATIONS = DEFAULT_LOCATIONS;
-
 let currentTab  = 'sunrise';
 let forecastData = null;
 let selectedDay  = 0;
 let activeLocIdx = 0;   // index into myLocs array; -1 = none
-let currentLat   = DEFAULT_LOCATIONS[0].lat;
-let currentLon   = DEFAULT_LOCATIONS[0].lon;
+let currentLat   = null;
+let currentLon   = null;
 let customLocName = '';
 let useFahrenheit = true;
 
@@ -817,11 +815,6 @@ function loadMyLocs() {
           if (loc.type === 'coast') loc.terrain = 'coast';
           else if (loc.type === 'ridge') loc.terrain = 'mountain';
           else loc.terrain = 'valley';
-          changed = true;
-        }
-        // Self-heal: if tagged coast but elevation > 100m, it's not coastal
-        if (loc.terrain === 'coast' && loc.elevation && loc.elevation > 100) {
-          loc.terrain = 'valley'; loc.type = 'valley';
           changed = true;
         }
       });
@@ -1886,10 +1879,8 @@ function buildVerdict(score, day, type, locType, terrain) {
 
   if (type === 'fog') {
     const s2 = day.scores;
-    const w2 = s2.windowData || {};
-    const dpSpreadVal = (w2.fgT != null && w2.fgDP != null) ? (w2.fgT - w2.fgDP) : null;
-    const dpSpread = dpSpreadVal != null ? fmtSpread(dpSpreadVal) : '?';
-    const rh = w2.fgRH != null ? Math.round(w2.fgRH) : '?';
+    const dpSpread = s2.dpSpread !== undefined ? s2.dpSpread.toFixed(1) : '?';
+    const rh = s2.rh !== undefined ? Math.round(s2.rh) : '?';
     const ridgeNote = (t === 'mountain' || t === 'highland') ? ' At this elevation you sit above the fog — a high score means a sea-of-clouds opportunity below you.' : '';
     const pool = getTierPool('fog', score);
     const nameLine = pickLine(pool);
@@ -1984,8 +1975,6 @@ async function fetchForecast(lat, lon) {
       aqi:       aqiJson ? aqiJson.hourly.us_aqi : null,
       sunriseTimes: d ? d.sunrise : null,
       sunsetTimes:  d ? d.sunset  : null,
-      sunriseLookup: d ? Object.fromEntries((d.sunrise||[]).map(s => [s.split('T')[0], s])) : {},
-      sunsetLookup:  d ? Object.fromEntries((d.sunset||[]).map(s => [s.split('T')[0], s])) : {},
     };
     renderDays();
     // Pre-fetch Bortle in background so it's cached for scoring
@@ -2322,7 +2311,7 @@ function renderTideChart(container, tideData, dayDate) {
 
   // Sunrise/sunset for the selected day — compute approximate times from lat/lon
   // We'll use the location lat/lon to estimate
-  const loc = activeLocIdx >= 0 ? LOCATIONS[activeLocIdx] : null;
+  const loc = activeLocIdx >= 0 ? loadMyLocs()[activeLocIdx] : null;
   let sunEvents = [];
   if (loc) {
     const { rise, set } = approxSunTimes(loc.lat, loc.lon, dayDate);
@@ -2447,8 +2436,6 @@ async function injectTideSection(detailPanelEl, day) {
   const activeLoc = activeLocIdx >= 0 ? myLocs[activeLocIdx] : null;
   const terrain = activeLoc ? (activeLoc.terrain || 'valley') : 'valley';
   if (terrain !== 'coast') return; // Not coastal — no tides
-  // Secondary elevation gate — if API reports > 100m elevation, can't be coastal
-  if (forecastData && forecastData.elevation > 100) return;
 
   const locCacheKey = `${lat.toFixed(4)}_${lon.toFixed(4)}`;
   let station = resolveStation(lat, lon, locCacheKey);
