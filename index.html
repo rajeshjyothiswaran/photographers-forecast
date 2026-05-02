@@ -1029,7 +1029,11 @@ function setTab(tab, el) {
   currentTab = tab;
   document.querySelectorAll('.tab').forEach(t=>t.classList.remove('active'));
   el.classList.add('active');
-  if (tab === 'aurora' && selectedDay >= 3) selectedDay = 0;
+  if (tab === 'aurora') {
+    selectedDay = Math.min(selectedDay, 2);
+    if (currentLat && currentLon) renderAuroraDays(currentLat, currentLon);
+    return;
+  }
   if (forecastData) renderDays();
 }
 function scoreColor(s) {
@@ -1311,12 +1315,6 @@ function renderDays() {
     {key:'stars',icon:'★'},{key:'fog',icon:'☁'}
   ];
 
-  // Aurora tab — fetch Kp data and render its own 3-day grid
-  if (currentTab === 'aurora') {
-    renderAuroraDays(currentLat, currentLon);
-    return;
-  }
-
   document.getElementById('day-grid').innerHTML = dayList.map((d,i) => {
     const mw = d.scores.mwInfo;
     const starsScore = d.scores.stars;
@@ -1344,7 +1342,14 @@ function renderDays() {
   renderDetail(dayList[selectedDay], locType);
 }
 
-function selectDay(i) { selectedDay=i; renderDays(); }
+function selectDay(i) {
+  selectedDay = i;
+  if (currentTab === 'aurora') {
+    renderAuroraDays(currentLat, currentLon);
+  } else {
+    renderDays();
+  }
+}
 
 function renderDetail(day, locType) {
   const score = day.scores[currentTab];
