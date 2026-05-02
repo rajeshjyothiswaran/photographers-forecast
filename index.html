@@ -1029,11 +1029,7 @@ function setTab(tab, el) {
   currentTab = tab;
   document.querySelectorAll('.tab').forEach(t=>t.classList.remove('active'));
   el.classList.add('active');
-  if (tab === 'aurora') {
-    selectedDay = Math.min(selectedDay, 2);
-    if (currentLat && currentLon) renderAuroraDays(currentLat, currentLon);
-    return;
-  }
+  if (tab === 'aurora' && selectedDay >= 3) selectedDay = 0;
   if (forecastData) renderDays();
 }
 function scoreColor(s) {
@@ -1315,6 +1311,12 @@ function renderDays() {
     {key:'stars',icon:'★'},{key:'fog',icon:'☁'}
   ];
 
+  // Aurora tab — fetch Kp data and render its own 3-day grid
+  if (currentTab === 'aurora') {
+    renderAuroraDays(currentLat, currentLon);
+    return;
+  }
+
   document.getElementById('day-grid').innerHTML = dayList.map((d,i) => {
     const mw = d.scores.mwInfo;
     const starsScore = d.scores.stars;
@@ -1342,14 +1344,7 @@ function renderDays() {
   renderDetail(dayList[selectedDay], locType);
 }
 
-function selectDay(i) {
-  selectedDay = i;
-  if (currentTab === 'aurora') {
-    renderAuroraDays(currentLat, currentLon);
-  } else {
-    renderDays();
-  }
-}
+function selectDay(i) { selectedDay=i; renderDays(); }
 
 function renderDetail(day, locType) {
   const score = day.scores[currentTab];
@@ -1953,15 +1948,40 @@ function kpLabel(kp) {
 
 async function fetchKpForecast() {
   if (auroraCache && (Date.now() - auroraCacheTime) < AURORA_CACHE_MS) return auroraCache;
+  // Try auroraforecast.space first — browser-friendly CORS
   try {
-    const res = await fetch('https://services.swpc.noaa.gov/json/noaa_planetary_k_index_forecast.json');
-    if (!res.ok) throw new Error('Kp API error');
+    const res = await fetch('https://auroraforecast.space/api/kp/forecast');
+    if (!res.ok) throw new Error('auroraforecast API error');
     const data = await res.json();
-    auroraCache = data;
-    auroraCacheTime = Date.now();
-    return data;
+    // Convert {x: ["Aug 01 00-03",...], y: [3,2,...]} to NOAA-like format
+    if (data && data.x && data.y) {
+      const converted = data.x.map((label, i) => ({
+        time_tag: label,
+        kp_index: data.y[i]
+      }));
+      auroraCache = converted;
+      auroraCacheTime = Date.now();
+      return converted;
+    }
   } catch(e) {
-    console.warn('Aurora Kp fetch failed:', e.message);
+    console.warn('auroraforecast.space fetch failed:', e.message);
+  }
+  // Fallback: NOAA SWPC products endpoint
+  try {
+    const res = await fetch('https://services.swpc.noaa.gov/products/noaa-planetary-k-index-forecast.json');
+    if (!res.ok) throw new Error('NOAA Kp API error');
+    const data = await res.json();
+    // NOAA format: [[time_tag, kp, observed, noaa_scale], ...]
+    // Skip header row
+    const converted = data.slice(1).map(row => ({
+      time_tag: row[0],
+      kp_index: parseFloat(row[1])
+    }));
+    auroraCache = converted;
+    auroraCacheTime = Date.now();
+    return converted;
+  } catch(e) {
+    console.warn('NOAA Kp fetch failed:', e.message);
     return null;
   }
 }
@@ -1970,10 +1990,23 @@ async function fetchKpForecast() {
 function groupKpByDay(kpData) {
   const days = {};
   const order = [];
+  const monthMap = {Jan:0,Feb:1,Mar:2,Apr:3,May:4,Jun:5,Jul:6,Aug:7,Sep:8,Oct:9,Nov:10,Dec:11};
   kpData.forEach(entry => {
-    const d = new Date(entry.time_tag);
+    let d;
+    const tag = entry.time_tag || '';
+    // Try ISO format first: "2026-05-01 03:00:00"
+    if (tag.match(/^\d{4}-\d{2}-\d{2}/)) {
+      d = new Date(tag.replace(' ', 'T') + 'Z');
+    } else {
+      // auroraforecast.space format: "Aug 01 00-03"
+      const m = tag.match(/^(\w{3})\s+(\d{2})/);
+      if (!m) return;
+      const year = new Date().getFullYear();
+      d = new Date(Date.UTC(year, monthMap[m[1]] ?? 0, parseInt(m[2])));
+    }
+    if (isNaN(d.getTime())) return;
     const key = `${d.getUTCFullYear()}-${d.getUTCMonth()}-${d.getUTCDate()}`;
-    const kp = parseFloat(entry.kp_index || entry.Kp || 0);
+    const kp = parseFloat(entry.kp_index || 0);
     if (!days[key]) { days[key] = { date: d, kps: [], maxKp: 0 }; order.push(key); }
     days[key].kps.push(kp);
     days[key].maxKp = Math.max(days[key].maxKp, kp);
@@ -2109,8 +2142,6 @@ function scoreLabel_aurora(s) {
 }
 
 // ── END AURORA FEATURE ────────────────────────────────────────────────────────
-
-function parseLocalISOTime(str) {
   if (!str) return null;
   const [datePart, timePart] = str.split('T');
   const [y, mo, d] = datePart.split('-').map(Number);
