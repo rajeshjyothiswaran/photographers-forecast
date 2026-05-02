@@ -1886,8 +1886,10 @@ function buildVerdict(score, day, type, locType, terrain) {
 
   if (type === 'fog') {
     const s2 = day.scores;
-    const dpSpread = s2.dpSpread !== undefined ? s2.dpSpread.toFixed(1) : '?';
-    const rh = s2.rh !== undefined ? Math.round(s2.rh) : '?';
+    const w2 = s2.windowData || {};
+    const dpSpreadVal = (w2.fgT != null && w2.fgDP != null) ? (w2.fgT - w2.fgDP) : null;
+    const dpSpread = dpSpreadVal != null ? fmtSpread(dpSpreadVal) : '?';
+    const rh = w2.fgRH != null ? Math.round(w2.fgRH) : '?';
     const ridgeNote = (t === 'mountain' || t === 'highland') ? ' At this elevation you sit above the fog — a high score means a sea-of-clouds opportunity below you.' : '';
     const pool = getTierPool('fog', score);
     const nameLine = pickLine(pool);
@@ -1982,6 +1984,8 @@ async function fetchForecast(lat, lon) {
       aqi:       aqiJson ? aqiJson.hourly.us_aqi : null,
       sunriseTimes: d ? d.sunrise : null,
       sunsetTimes:  d ? d.sunset  : null,
+      sunriseLookup: d ? Object.fromEntries((d.sunrise||[]).map(s => [s.split('T')[0], s])) : {},
+      sunsetLookup:  d ? Object.fromEntries((d.sunset||[]).map(s => [s.split('T')[0], s])) : {},
     };
     renderDays();
     // Pre-fetch Bortle in background so it's cached for scoring
