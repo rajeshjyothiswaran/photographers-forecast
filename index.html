@@ -233,6 +233,7 @@
     <button class="tab active" onclick="setTab('sunrise',this)">🌅 Sunrise</button>
     <button class="tab" onclick="setTab('sunset',this)">🌇 Sunset</button>
     <button class="tab" onclick="setTab('stars',this)">★ Stars</button>
+    <button class="tab" onclick="setTab('aurora',this)">🌌 Aurora</button>
     <button class="tab" onclick="setTab('fog',this)">☁ Fog</button>
   </div>
   <div id="day-grid" class="day-grid"></div>
@@ -1028,6 +1029,7 @@ function setTab(tab, el) {
   currentTab = tab;
   document.querySelectorAll('.tab').forEach(t=>t.classList.remove('active'));
   el.classList.add('active');
+  if (tab === 'aurora' && selectedDay >= 3) selectedDay = 0;
   if (forecastData) renderDays();
 }
 function scoreColor(s) {
@@ -1308,6 +1310,13 @@ function renderDays() {
     {key:'sunrise',icon:'🌅'},{key:'sunset',icon:'🌇'},
     {key:'stars',icon:'★'},{key:'fog',icon:'☁'}
   ];
+
+  // Aurora tab — fetch Kp data and render its own 3-day grid
+  if (currentTab === 'aurora') {
+    renderAuroraDays(currentLat, currentLon);
+    return;
+  }
+
   document.getElementById('day-grid').innerHTML = dayList.map((d,i) => {
     const mw = d.scores.mwInfo;
     const starsScore = d.scores.stars;
@@ -1341,8 +1350,8 @@ function renderDetail(day, locType) {
   const score = day.scores[currentTab];
   const [label, tc, bg] = scoreLabel(score);
   const s = day.scores;
-  const tabIcons  = {sunrise:'🌅',sunset:'🌇',stars:'★',fog:'☁'};
-  const tabLabels = {sunrise:'Sunrise color',sunset:'Sunset color',stars:'Clear stars',fog:'Fog potential'};
+  const tabIcons  = {sunrise:'🌅',sunset:'🌇',stars:'★',aurora:'🌌',fog:'☁'};
+  const tabLabels = {sunrise:'Sunrise color',sunset:'Sunset color',stars:'Clear stars',aurora:'Aurora potential',fog:'Fog potential'};
   const myLocs = loadMyLocs();
   const locName   = activeLocIdx>=0 && myLocs[activeLocIdx] ? myLocs[activeLocIdx].name : (customLocName||'Custom location');
   const terrain   = (activeLocIdx>=0 && myLocs[activeLocIdx] && myLocs[activeLocIdx].terrain) ? myLocs[activeLocIdx].terrain : 'valley';
@@ -1893,7 +1902,208 @@ function buildVerdict(score, day, type, locType, terrain) {
   }
 }
 
-function parseLocalISOTime(str) {
+// ── AURORA FEATURE ────────────────────────────────────────────────────────────
+
+let auroraCache = null;
+let auroraCacheTime = 0;
+const AURORA_CACHE_MS = 30 * 60 * 1000; // 30 min
+
+// Minimum Kp to see aurora at a given latitude (approximate)
+function minKpForLat(lat) {
+  const absLat = Math.abs(lat);
+  if (absLat >= 65) return 1;
+  if (absLat >= 60) return 2;
+  if (absLat >= 55) return 3;
+  if (absLat >= 50) return 4;
+  if (absLat >= 45) return 5;
+  if (absLat >= 40) return 6;
+  if (absLat >= 35) return 7;
+  if (absLat >= 30) return 8;
+  return 9;
+}
+
+function auroraScore(kp, lat, avgCloud) {
+  const minKp = minKpForLat(lat);
+  const kpMargin = kp - minKp;
+  let score = 0;
+  if (kpMargin >= 3) score = 90;
+  else if (kpMargin >= 2) score = 75;
+  else if (kpMargin >= 1) score = 55;
+  else if (kpMargin >= 0) score = 35;
+  else if (kpMargin >= -1) score = 15;
+  else score = 5;
+  // Cloud penalty
+  const cloudPenalty = (avgCloud / 100) * 40;
+  return Math.max(0, Math.min(100, Math.round(score - cloudPenalty)));
+}
+
+function kpLabel(kp) {
+  if (kp >= 8) return ['Extreme storm · G4–G5', '#0F6E56', '#c8ead8'];
+  if (kp >= 6) return ['Strong storm · G2–G3', '#0F6E56', '#c8ead8'];
+  if (kp >= 5) return ['Minor storm · G1', '#BA7517', '#f5e0b5'];
+  if (kp >= 4) return ['Active · sub-storm', '#BA7517', '#f5e0b5'];
+  if (kp >= 3) return ['Unsettled', '#5F5E5A', '#e8e7e2'];
+  return ['Quiet', '#5F5E5A', '#e8e7e2'];
+}
+
+async function fetchKpForecast() {
+  if (auroraCache && (Date.now() - auroraCacheTime) < AURORA_CACHE_MS) return auroraCache;
+  try {
+    const res = await fetch('https://services.swpc.noaa.gov/json/noaa_planetary_k_index_forecast.json');
+    if (!res.ok) throw new Error('Kp API error');
+    const data = await res.json();
+    auroraCache = data;
+    auroraCacheTime = Date.now();
+    return data;
+  } catch(e) {
+    console.warn('Aurora Kp fetch failed:', e.message);
+    return null;
+  }
+}
+
+// Group Kp 3-hour blocks into days, take max Kp per day
+function groupKpByDay(kpData) {
+  const days = {};
+  const order = [];
+  kpData.forEach(entry => {
+    const d = new Date(entry.time_tag);
+    const key = `${d.getUTCFullYear()}-${d.getUTCMonth()}-${d.getUTCDate()}`;
+    const kp = parseFloat(entry.kp_index || entry.Kp || 0);
+    if (!days[key]) { days[key] = { date: d, kps: [], maxKp: 0 }; order.push(key); }
+    days[key].kps.push(kp);
+    days[key].maxKp = Math.max(days[key].maxKp, kp);
+  });
+  return order.slice(0, 3).map(k => days[k]);
+}
+
+async function renderAuroraDays(lat, lon) {
+  const grid = document.getElementById('day-grid');
+  const detail = document.getElementById('detail-panel');
+  grid.innerHTML = Array(3).fill(`<div class="shimmer" style="height:80px"></div>`).join('');
+  detail.innerHTML = '';
+
+  const kpData = await fetchKpForecast();
+  if (!kpData) {
+    grid.innerHTML = `<div class="status error-msg" style="grid-column:1/-1">Could not load aurora forecast. Check your connection.</div>`;
+    return;
+  }
+
+  const dayNames = ['Sun','Mon','Tue','Wed','Thu','Fri','Sat'];
+  const monthNames = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+  const kpDays = groupKpByDay(kpData);
+  if (!kpDays.length) {
+    grid.innerHTML = `<div class="status" style="grid-column:1/-1">No aurora forecast data available.</div>`;
+    return;
+  }
+
+  // Get avg cloud for each day from forecastData
+  const { ts, lclouds, mclouds, hclouds } = forecastData || {};
+
+  const dayCards = kpDays.map((kd, i) => {
+    const d = kd.date;
+    const dayName = i === 0 ? 'Today' : dayNames[d.getUTCDay()];
+    const dateStr = `${monthNames[d.getUTCMonth()]} ${d.getUTCDate()}`;
+    // Find avg cloud for this date from forecastData
+    let avgCloud = 50;
+    if (ts) {
+      const matching = ts.reduce((acc, t, idx) => {
+        const td = new Date(t);
+        if (td.getDate() === d.getUTCDate() && td.getMonth() === d.getUTCMonth()) {
+          acc.push((lclouds[idx] + mclouds[idx] + hclouds[idx]) / 3);
+        }
+        return acc;
+      }, []);
+      if (matching.length) avgCloud = matching.reduce((a,b) => a+b,0) / matching.length;
+    }
+    const score = auroraScore(kd.maxKp, lat || 38, avgCloud);
+    const col = scoreColor(score);
+    return { dayName, dateStr, kp: kd.maxKp, score, col, avgCloud, isToday: i === 0 };
+  });
+
+  // Store for detail rendering
+  window._auroraDays = dayCards;
+  if (selectedDay >= dayCards.length) selectedDay = 0;
+
+  grid.innerHTML = dayCards.map((d, i) =>
+    `<div class="day-card ${i === selectedDay ? 'selected' : ''}" onclick="selectAuroraDay(${i})">
+      <div class="day-top"><span class="day-name">${d.dayName}</span></div>
+      <div class="day-label" style="margin-bottom:6px">${d.dateStr}</div>
+      <div class="score-row">
+        <span class="score-icon">🌌</span>
+        <div class="score-bar-wrap"><div class="score-bar" style="width:${d.score}%;background:${d.col}"></div></div>
+        <span class="score-num">${d.score}<span style="font-size:8px;opacity:0.5"> / 100</span></span>
+      </div>
+      <div style="font-size:9px;color:var(--text-secondary);margin-top:4px">Kp ${d.kp.toFixed(1)} max</div>
+    </div>`
+  ).join('') + `<div style="font-size:10px;color:var(--text-secondary);grid-column:1/-1;padding:2px 0">Aurora forecast: 3 days only · NOAA SWPC</div>`;
+
+  renderAuroraDetail(dayCards[selectedDay], lat, lon);
+}
+
+function selectAuroraDay(i) {
+  selectedDay = i;
+  const cards = document.querySelectorAll('#day-grid .day-card');
+  cards.forEach((c, ci) => c.classList.toggle('selected', ci === i));
+  if (window._auroraDays) renderAuroraDetail(window._auroraDays[i], currentLat, currentLon);
+}
+
+function renderAuroraDetail(day, lat, lon) {
+  const minKp = minKpForLat(lat || 38);
+  const absLat = Math.abs(lat || 38);
+  const [scoreLabel, tc, bg] = scoreLabel_aurora(day.score);
+  const [kpDesc, ktc, kbg] = kpLabel(day.kp);
+  const locName = activeLocIdx >= 0 ? (loadMyLocs()[activeLocIdx]?.name || 'This location') : (customLocName || 'This location');
+
+  // Visibility verdict
+  let verdict = '';
+  const margin = day.kp - minKp;
+  if (margin >= 2) verdict = `Strong aurora likely visible at ${absLat.toFixed(0)}°N tonight. Get away from city lights and look toward the northern horizon. Even partly cloudy skies may show color.`;
+  else if (margin >= 1) verdict = `Aurora possible at ${absLat.toFixed(0)}°N with Kp ${day.kp.toFixed(1)}. You need Kp ${minKp}+ — conditions are marginally favorable. Watch for activity after dark.`;
+  else if (margin >= 0) verdict = `Borderline conditions at ${absLat.toFixed(0)}°N. Kp ${day.kp.toFixed(1)} just meets the threshold of Kp ${minKp} needed here. A brief display is possible but not reliable.`;
+  else if (margin >= -2) verdict = `Unlikely at ${absLat.toFixed(0)}°N. You need Kp ${minKp}+ but only Kp ${day.kp.toFixed(1)} is forecast. Aurora is active but confined to higher latitudes.`;
+  else verdict = `Not visible at ${absLat.toFixed(0)}°N under quiet geomagnetic conditions (Kp ${day.kp.toFixed(1)}). Aurora is limited to polar regions above ~${Math.round(absLat + 15)}°N.`;
+
+  // Cloud note
+  const cloudNote = day.avgCloud > 70 ? ' Heavy cloud cover will block viewing even if activity is strong.' :
+                    day.avgCloud > 40 ? ' Partial cloud cover may obstruct viewing — check conditions the evening before.' : '';
+
+  document.getElementById('detail-panel').innerHTML = `
+    <div class="detail-panel">
+      <div class="detail-header">
+        <div class="detail-icon">🌌</div>
+        <div>
+          <div class="detail-title">Aurora potential — ${day.isToday ? 'Tonight' : day.dayName} ${day.dateStr}</div>
+          <span class="badge" style="background:${bg};color:${tc}">${scoreLabel} · ${day.score}/100</span>
+          <span style="font-size:11px;color:var(--text-secondary);margin-left:8px">${locName}</span>
+        </div>
+      </div>
+      <div class="metric-grid">
+        <div class="metric-card"><div class="metric-label">Kp forecast</div><div class="metric-value">${day.kp.toFixed(1)}<span class="metric-unit"> max</span></div></div>
+        <div class="metric-card"><div class="metric-label">Kp needed here</div><div class="metric-value">${minKp}<span class="metric-unit">+ min</span></div></div>
+        <div class="metric-card"><div class="metric-label">Your latitude</div><div class="metric-value">${absLat.toFixed(1)}<span class="metric-unit">°</span></div></div>
+        <div class="metric-card"><div class="metric-label">Activity</div><div class="metric-value" style="font-size:13px">${kpDesc}</div></div>
+        <div class="metric-card"><div class="metric-label">Avg cloud cover</div><div class="metric-value">${Math.round(day.avgCloud)}<span class="metric-unit">%</span></div></div>
+        <div class="metric-card"><div class="metric-label">Best direction</div><div class="metric-value" style="font-size:13px">${lat >= 0 ? 'North' : 'South'}</div></div>
+      </div>
+      <div class="badges-row">
+        <span class="badge" style="background:${kbg};color:${ktc}">${kpDesc}</span>
+        ${day.avgCloud > 60 ? `<span class="badge" style="background:var(--gray-bg);color:var(--gray-text)">Cloudy</span>` : ''}
+        ${day.kp >= minKp ? `<span class="badge" style="background:var(--green-bg);color:var(--green-text)">Above threshold</span>` : `<span class="badge" style="background:var(--coral-bg);color:var(--coral-text)">Below threshold</span>`}
+      </div>
+      <div class="verdict" style="background:${bg};color:${tc}">${verdict}${cloudNote}</div>
+      <div class="tip">Aurora forecast is only reliable 1–3 days ahead. For real-time alerts during active storms, check <a href="https://www.swpc.noaa.gov" target="_blank" style="color:var(--blue-text)">NOAA Space Weather</a> or the SpaceWeatherLive app. Data: NOAA SWPC Kp index.</div>
+    </div>`;
+}
+
+function scoreLabel_aurora(s) {
+  if (s >= 80) return ['Exceptional', '#0F6E56', '#c8ead8'];
+  if (s >= 65) return ['Very good',   '#0F6E56', '#c8ead8'];
+  if (s >= 50) return ['Fair',        '#BA7517', '#f5e0b5'];
+  if (s >= 30) return ['Marginal',    '#993C1D', '#f5cfc4'];
+  return              ['Poor',        '#5F5E5A', '#e8e7e2'];
+}
+
+// ── END AURORA FEATURE ────────────────────────────────────────────────────────
   if (!str) return null;
   const [datePart, timePart] = str.split('T');
   const [y, mo, d] = datePart.split('-').map(Number);
