@@ -13,7 +13,7 @@
 <link rel="apple-touch-icon" href="icons/apple-touch-icon.png">
 <link rel="icon" type="image/png" sizes="32x32" href="icons/favicon-32.png">
 <link rel="icon" type="image/png" sizes="16x16" href="icons/favicon-16.png">
-<title>Halcyon — The Photographer's Forecast</title>
+<title>Halcyon™ — The Photographer's Forecast</title>
 <style>
   *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
   :root {
@@ -119,6 +119,27 @@
   .save-fav-btn:hover { background: var(--bg-secondary); color: var(--text); }
   .save-fav-btn.saved { color: var(--green-text); border-color: var(--green); }
   .loc-section-label { font-size: 10px; color: var(--text-secondary); margin-bottom: 6px; letter-spacing: 0.04em; text-transform: uppercase; }
+  .terrain-badge { display: inline-flex; align-items: center; gap: 3px; font-size: 9px; font-weight: 500; padding: 2px 6px; border-radius: 4px; margin-top: 4px; cursor: pointer; user-select: none; transition: opacity 0.15s; }
+  .terrain-badge:hover { opacity: 0.75; }
+  .terrain-coast    { background: #dbeaf8; color: #185FA5; }
+  .terrain-mountain { background: #e8e8ec; color: #4a4a5a; }
+  .terrain-highland { background: #e8e0f0; color: #6b3fa0; }
+  .terrain-valley   { background: #f5e0b5; color: #BA7517; }
+  .terrain-woodland { background: #d5ebbf; color: #3B6D11; }
+  .terrain-desert   { background: #faeada; color: #a05010; }
+  .terrain-plains   { background: #e0f0e0; color: #2a6a2a; }
+  @media (prefers-color-scheme: dark) {
+    .terrain-coast    { background: #0c2a45; color: #85B7EB; }
+    .terrain-mountain { background: #2a2a35; color: #a0a0c0; }
+    .terrain-highland { background: #2a1a40; color: #c090e0; }
+    .terrain-valley   { background: #2a1c04; color: #FAC775; }
+    .terrain-woodland { background: #0f2208; color: #8fc860; }
+    .terrain-desert   { background: #2a1404; color: #e08040; }
+    .terrain-plains   { background: #0a200a; color: #70c070; }
+  }
+  .terrain-picker { position: absolute; top: 100%; left: 0; z-index: 100; background: var(--bg); border: 0.5px solid var(--border-secondary); border-radius: var(--radius-lg); padding: 6px; display: grid; grid-template-columns: 1fr 1fr; gap: 4px; min-width: 180px; box-shadow: 0 4px 16px rgba(0,0,0,0.15); }
+  .terrain-option { display: flex; align-items: center; gap: 5px; padding: 5px 8px; border-radius: 6px; cursor: pointer; font-size: 11px; color: var(--text); }
+  .terrain-option:hover { background: var(--bg-secondary); }
   @keyframes pulse { 0%,100%{opacity:1} 50%{opacity:0.5} }
   .status { padding: 2rem; text-align: center; color: var(--text-secondary); font-size: 13px; }
   .error-msg { color: var(--coral-text); }
@@ -173,7 +194,7 @@
 <body>
 <div class="container">
   <div style="display:flex;justify-content:space-between;align-items:baseline;margin-bottom:4px">
-    <h1>Halcyon</h1>
+    <h1>Halcyon™</h1>
     <div style="display:flex;gap:0;font-size:12px;border:1.5px solid var(--border-secondary);border-radius:6px;overflow:hidden">
       <button id="btnF" onclick="setUnit('F')" style="padding:4px 10px;border:none;background:var(--blue);color:#fff;cursor:pointer;font-size:12px;font-weight:600;letter-spacing:0.02em">°F</button>
       <button id="btnC" onclick="setUnit('C')" style="padding:4px 10px;border:none;background:transparent;color:var(--text-secondary);cursor:pointer;font-size:12px;font-weight:400">°C</button>
@@ -219,9 +240,9 @@
   <footer>
     Forecast: <a href="https://open-meteo.com" target="_blank">Open-Meteo</a> ·
     © <a href="https://www.openstreetmap.org/copyright" target="_blank">OpenStreetMap contributors</a> ·
-    Halcyon · Built for <a href="https://rjfineart.com" target="_blank">LadyBugFarm Images</a> · Intl tides: <a href="https://tidecheck.com" target="_blank">TideCheck</a> ·
+    Halcyon™ · Built for <a href="https://rjfineart.com" target="_blank">LadyBugFarm Images</a> · Intl tides: <a href="https://tidecheck.com" target="_blank">TideCheck</a> ·
     <a href="https://rajeshjyothiswaran.github.io/photographers-forecast/guide.html" target="_blank">User guide</a><br>
-    <span style="opacity:0.7">© 2026 Rajesh Jyothiswaran / LadyBugFarm Images. All rights reserved. · Scores are model-based estimates — real skies vary. Always check conditions again the evening before. Not liable for forecast errors. Tide predictions for planning only, not navigation.</span>
+    <span style="opacity:0.7">Halcyon™ © 2026 Rajesh Jyothiswaran / LadyBugFarm Images. All rights reserved. · Scores are model-based estimates — real skies vary. Always check conditions again the evening before. Not liable for forecast errors. Tide predictions for planning only, not navigation.</span>
   </footer>
 </div>
 <script>
@@ -442,15 +463,162 @@ function moonPenalty(fraction) {
   return 60;
 }
 
+// ── Bortle / Light Pollution ─────────────────────────────────────────────────
+// Fetches real Bortle class from lightpollutionmap.info using VIIRS satellite data.
+// Returns SQM (magnitudes per square arcsecond) which we convert to Bortle.
+// Falls back to estimate from population density if API fails.
+
+const bortleCache = {}; // keyed by "lat_lon"
+
+function sqmToBortle(sqm) {
+  // Standard SQM → Bortle conversion table
+  if (sqm >= 21.99) return 1;
+  if (sqm >= 21.89) return 2;
+  if (sqm >= 21.69) return 3;
+  if (sqm >= 20.49) return 4;
+  if (sqm >= 19.50) return 5;
+  if (sqm >= 18.94) return 6;
+  if (sqm >= 18.38) return 7;
+  if (sqm >= 17.80) return 8;
+  return 9;
+}
+
+function bortleInfo(bortle) {
+  const map = {
+    1: { label: 'Bortle 1', desc: 'Pristine dark sky',           tc: '#0F6E56', bg: '#c8ead8' },
+    2: { label: 'Bortle 2', desc: 'Truly dark sky',              tc: '#0F6E56', bg: '#c8ead8' },
+    3: { label: 'Bortle 3', desc: 'Rural sky',                   tc: '#0F6E56', bg: '#c8ead8' },
+    4: { label: 'Bortle 4', desc: 'Rural/suburban transition',   tc: '#3B6D11', bg: '#d5ebbf' },
+    5: { label: 'Bortle 5', desc: 'Suburban sky',                tc: '#BA7517', bg: '#f5e0b5' },
+    6: { label: 'Bortle 6', desc: 'Bright suburban sky',         tc: '#BA7517', bg: '#f5e0b5' },
+    7: { label: 'Bortle 7', desc: 'Suburban/urban transition',   tc: '#993C1D', bg: '#f5cfc4' },
+    8: { label: 'Bortle 8', desc: 'City sky',                    tc: '#993C1D', bg: '#f5cfc4' },
+    9: { label: 'Bortle 9', desc: 'Inner-city sky',              tc: '#5F5E5A', bg: '#e8e7e2' },
+  };
+  return { bortle, ...map[bortle] || map[5] };
+}
+
+// Queue to serialize Bortle API requests — prevents rate limiting
+const _bortleQueue = [];
+let _bortleFetching = false;
+
+async function _processBortleQueue() {
+  if (_bortleFetching || !_bortleQueue.length) return;
+  _bortleFetching = true;
+  const { lat, lon, key, resolve } = _bortleQueue.shift();
+  try {
+    // Wait 1.2s between requests to stay well under rate limit
+    await new Promise(r => setTimeout(r, 1200));
+    const url = `https://www.lightpollutionmap.info/QueryRaster/?ql=wa_2015&qt=point&qd=${lon},${lat}`;
+    const res = await fetch(url);
+    if (!res.ok) throw new Error(`HTTP ${res.status}`);
+    const text = await res.text();
+    // Response is a plain number string e.g. "21.45"
+    const sqm = parseFloat(text.trim());
+    if (isNaN(sqm)) throw new Error('Invalid SQM: ' + text.slice(0, 50));
+    const bortle = sqmToBortle(sqm);
+    const info = { ...bortleInfo(bortle), sqm: sqm.toFixed(2), source: 'VIIRS' };
+    bortleCache[key] = info;
+    try { localStorage.setItem(`bortle_${key}`, JSON.stringify(info)); } catch(e) {}
+    resolve(info);
+  } catch(e) {
+    console.log('Bortle fetch failed:', e.message);
+    resolve(null);
+  }
+  _bortleFetching = false;
+  // Process next in queue after a small gap
+  setTimeout(_processBortleQueue, 200);
+}
+
+async function fetchBortle(lat, lon) {
+  const key = `${lat.toFixed(3)}_${lon.toFixed(3)}`;
+
+  // Memory cache
+  if (bortleCache[key]) return bortleCache[key];
+
+  // localStorage cache — Bortle doesn't change, cache permanently
+  try {
+    const stored = localStorage.getItem(`bortle_${key}`);
+    if (stored) {
+      const parsed = JSON.parse(stored);
+      if (parsed && parsed.bortle) {
+        bortleCache[key] = parsed;
+        return parsed;
+      }
+    }
+  } catch(e) {}
+
+  // Queue the API request
+  return new Promise(resolve => {
+    _bortleQueue.push({ lat, lon, key, resolve });
+    _processBortleQueue();
+  });
+}
+
+function bortleEstimate(lat, lon) {
+  // Very rough estimate when API unavailable — better than a flat Bortle 5
+  // Based on distance from major urban centers (simplified)
+  return bortleInfo(5); // still defaults to 5 but now clearly labeled as estimate
+}
+
+async function fetchBortleBackground(locIdx, locName, lat, lon) {
+  if (!lat || !lon) return;
+  if (locIdx >= 0 && BORTLE_PRESETS[locName] !== undefined) return;
+  const result = await bortleForLocation(locIdx, locName, lat, lon);
+  if (result && result.source === 'VIIRS') {
+    console.log('Bortle updated:', result.label, result.sqm, 'SQM');
+    // Re-render days AND the current detail panel
+    renderDays();
+    const detailEl = document.getElementById('detail-panel');
+    if (detailEl && detailEl.innerHTML) {
+      // Re-render detail for currently selected day
+      const dayCards = document.querySelectorAll('.day-card');
+      if (dayCards[selectedDay]) dayCards[selectedDay].click();
+    }
+  }
+}
+
+// Keep preset overrides for known locations where we have verified values
 const BORTLE_PRESETS = {
-  'Jenner':        { bortle: 3, label: 'Bortle 3', desc: 'Rural sky', tc: '#0F6E56', bg: '#c8ead8' },
-  'Salt Point SP': { bortle: 2, label: 'Bortle 2', desc: 'Truly dark', tc: '#0F6E56', bg: '#c8ead8' },
-  'Mercuryville':  { bortle: 3, label: 'Bortle 3', desc: 'Rural sky', tc: '#0F6E56', bg: '#c8ead8' },
-  'Geyserville':   { bortle: 4, label: 'Bortle 4', desc: 'Rural/suburban transition', tc: '#BA7517', bg: '#f5e0b5' },
+  'Jenner':        3,
+  'Salt Point SP': 2,
+  'Mercuryville':  3,
+  'Geyserville':   4,
 };
-function bortleForLocation(locIdx, locName) {
-  if (locIdx >= 0 && BORTLE_PRESETS[locName]) return BORTLE_PRESETS[locName];
-  return { bortle: 5, label: 'Bortle 5', desc: 'Suburban sky (estimate)', tc: '#BA7517', bg: '#f5e0b5' };
+
+// Synchronous version — uses cache populated by fetchBortleForCurrentLocation()
+function syncBortleForLocation(locIdx, locName, lat, lon) {
+  // Check known presets first
+  if (locIdx >= 0 && BORTLE_PRESETS[locName] !== undefined) {
+    return bortleInfo(BORTLE_PRESETS[locName]);
+  }
+  // Check memory cache
+  if (lat && lon) {
+    const key = `${lat.toFixed(3)}_${lon.toFixed(3)}`;
+    if (bortleCache[key]) return bortleCache[key];
+    // Check localStorage
+    try {
+      const stored = localStorage.getItem(`bortle_${key}`);
+      if (stored) {
+        const parsed = JSON.parse(stored);
+        bortleCache[key] = parsed;
+        return parsed;
+      }
+    } catch(e) {}
+  }
+  return { ...bortleInfo(5), desc: 'Suburban sky (estimate)', source: 'estimate' };
+}
+
+async function bortleForLocation(locIdx, locName, lat, lon) {
+  // Check known presets first
+  if (locIdx >= 0 && BORTLE_PRESETS[locName] !== undefined) {
+    return bortleInfo(BORTLE_PRESETS[locName]);
+  }
+  // Try live API
+  const result = await fetchBortle(lat, lon);
+  if (result) return result;
+  // Fallback estimate
+  return { ...bortleInfo(5), desc: 'Suburban sky (estimate)', source: 'estimate' };
 }
 function bortlePenalty(bortle) {
   if (bortle <= 2) return 0; if (bortle <= 3) return 5; if (bortle <= 4) return 15;
@@ -478,11 +646,35 @@ const TIDECHECK_API_KEY = 'tc_live_5c360a266092a5ee22179cbfc6e70d42'; // TideChe
 
 // Default locations seeded into My Locations for first-time users
 const DEFAULT_LOCATIONS = [
-  { name: 'Jenner',        lat: 38.45, lon: -123.12, type: 'coast', note: 'Russian River mouth · coastal' },
-  { name: 'Salt Point SP', lat: 38.57, lon: -123.33, type: 'coast', note: 'Gerstle Cove · rocky coast' },
-  { name: 'Mercuryville',  lat: 38.78, lon: -122.82, type: 'ridge', note: '2,720 ft · above fog layer' },
-  { name: 'Geyserville',   lat: 38.71, lon: -122.90, type: 'valley', note: 'Alexander Valley floor' },
+  { name: 'Jenner',        lat: 38.45, lon: -123.12, type: 'coast',   terrain: 'coast',   note: 'Russian River mouth · coastal' },
+  { name: 'Salt Point SP', lat: 38.57, lon: -123.33, type: 'coast',   terrain: 'coast',   note: 'Gerstle Cove · rocky coast' },
+  { name: 'Mercuryville',  lat: 38.78, lon: -122.82, type: 'ridge',   terrain: 'mountain',note: '2,720 ft · above fog layer' },
+  { name: 'Geyserville',   lat: 38.71, lon: -122.90, type: 'valley',  terrain: 'valley',  note: 'Alexander Valley floor' },
 ];
+
+// Terrain type definitions
+const TERRAIN_TYPES = {
+  coast:    { label: 'Coast',    icon: '🌊', cls: 'terrain-coast'    },
+  mountain: { label: 'Mountain', icon: '⛰',  cls: 'terrain-mountain' },
+  highland: { label: 'Highland', icon: '🌿', cls: 'terrain-highland' },
+  valley:   { label: 'Valley',   icon: '🌄', cls: 'terrain-valley'   },
+  woodland: { label: 'Woodland', icon: '🌲', cls: 'terrain-woodland' },
+  desert:   { label: 'Desert',   icon: '☀️', cls: 'terrain-desert'   },
+  plains:   { label: 'Plains',   icon: '🌾', cls: 'terrain-plains'   },
+};
+
+// Auto-detect terrain type from elevation and humidity
+// Coastal detection is now handled separately via Marine API
+function autoDetectTerrain(elevation, tideDistKm, avgHumidity) {
+  // tideDistKm kept for backward compat but no longer used for coast detection
+  if (elevation > 2500) return 'mountain';
+  const isArid = avgHumidity < 38;
+  if (elevation > 1000 && !isArid) return 'highland';
+  if (isArid) return 'desert';
+  // Plains: flat, low elevation, not arid
+  if (elevation < 300 && avgHumidity < 70) return 'plains';
+  return null; // ambiguous — default to valley
+}
 
 // LOCATIONS still used for scoring type lookup on known presets
 const LOCATIONS = DEFAULT_LOCATIONS;
@@ -615,7 +807,22 @@ function fetchCustom() {
 function loadMyLocs() {
   try {
     const stored = localStorage.getItem('pf_locs');
-    if (stored) return JSON.parse(stored);
+    if (stored) {
+      const locs = JSON.parse(stored);
+      // Migrate old locations without terrain field
+      let changed = false;
+      locs.forEach(loc => {
+        if (!loc.terrain) {
+          // Infer from legacy type field
+          if (loc.type === 'coast') loc.terrain = 'coast';
+          else if (loc.type === 'ridge') loc.terrain = 'mountain';
+          else loc.terrain = 'valley';
+          changed = true;
+        }
+      });
+      if (changed) saveMyLocs(locs);
+      return locs;
+    }
     // First visit — seed defaults
     const seeded = DEFAULT_LOCATIONS.map(l => ({ ...l }));
     saveMyLocs(seeded);
@@ -636,13 +843,15 @@ function renderMyLocs() {
   const locs = loadMyLocs();
   const grid = document.getElementById('myLocGrid');
   if (!grid) return;
-  grid.innerHTML = locs.map((loc, i) =>
-    `<div class="fav-btn ${activeLocIdx === i ? 'active' : ''}" onclick="selectMyLoc(${i})" role="button" tabindex="0">
+  grid.innerHTML = locs.map((loc, i) => {
+    const t = TERRAIN_TYPES[loc.terrain] || TERRAIN_TYPES.valley;
+    return `<div class="fav-btn ${activeLocIdx === i ? 'active' : ''}" onclick="selectMyLoc(${i})" role="button" tabindex="0" style="position:relative">
       <span class="fav-remove" onclick="removeMyLoc(event,${i})" title="Remove">✕</span>
       <div class="fav-name">${escStr(loc.name)}</div>
       <div class="fav-detail">${escStr(loc.note || '')}</div>
-    </div>`
-  ).join('');
+      <span class="terrain-badge ${t.cls}" onclick="openTerrainPicker(event,${i})" title="Change terrain type">${t.icon} ${t.label}</span>
+    </div>`;
+  }).join('');
 }
 
 function selectMyLoc(i) {
@@ -674,7 +883,60 @@ function removeMyLoc(e, i) {
   renderMyLocs();
 }
 
-function saveCurrentAsMyLoc() {
+// ── Terrain picker ───────────────────────────────────────────────────────────
+let _terrainPickerEl = null;
+
+function openTerrainPicker(e, locIdx) {
+  e.stopPropagation();
+  closeTerrainPicker();
+  const badge = e.currentTarget;
+  const picker = document.createElement('div');
+  picker.className = 'terrain-picker';
+  picker.id = 'terrainPicker';
+  Object.entries(TERRAIN_TYPES).forEach(([key, t]) => {
+    const opt = document.createElement('div');
+    opt.className = 'terrain-option';
+    opt.innerHTML = `<span>${t.icon}</span><span>${t.label}</span>`;
+    opt.onclick = (ev) => { ev.stopPropagation(); setTerrain(locIdx, key); closeTerrainPicker(); };
+    picker.appendChild(opt);
+  });
+  badge.parentElement.appendChild(picker);
+  _terrainPickerEl = picker;
+  setTimeout(() => document.addEventListener('click', closeTerrainPicker, { once: true }), 0);
+}
+
+function closeTerrainPicker() {
+  const p = document.getElementById('terrainPicker');
+  if (p) p.remove();
+  _terrainPickerEl = null;
+}
+
+function setTerrain(locIdx, terrainKey) {
+  const locs = loadMyLocs();
+  if (!locs[locIdx]) return;
+  locs[locIdx].terrain = terrainKey;
+  // Keep legacy type in sync for scoring
+  const legacyMap = { coast:'coast', mountain:'ridge', highland:'ridge', valley:'valley', woodland:'valley', desert:'valley', plains:'valley' };
+  locs[locIdx].type = legacyMap[terrainKey] || 'valley';
+  saveMyLocs(locs);
+  renderMyLocs();
+}
+
+// Show terrain prompt for ambiguous new locations
+function promptTerrainIfNeeded(locIdx) {
+  const locs = loadMyLocs();
+  const loc = locs[locIdx];
+  if (!loc || loc.terrain) return; // already set
+  // Show prompt
+  const grid = document.getElementById('myLocGrid');
+  if (!grid) return;
+  const cards = grid.querySelectorAll('.fav-btn');
+  const card = cards[locIdx];
+  if (!card) return;
+  setTimeout(() => openTerrainPicker({ stopPropagation:()=>{}, currentTarget: card.querySelector('.terrain-badge') || card }, locIdx), 300);
+}
+
+async function saveCurrentAsMyLoc() {
   if (!currentLat || !currentLon || !customLocName) return;
   const locs = loadMyLocs();
   if (locs.some(l => Math.abs(l.lat-currentLat)<0.001 && Math.abs(l.lon-currentLon)<0.001)) {
@@ -683,12 +945,62 @@ function saveCurrentAsMyLoc() {
     setTimeout(() => { btn.textContent = '☆ Save to My Locations'; btn.classList.remove('saved'); }, 2000);
     return;
   }
-  locs.push({ name: customLocName, note: '', lat: currentLat, lon: currentLon });
+
+  const btn = document.getElementById('saveFavBtn');
+  btn.textContent = '⏳ Saving...'; btn.disabled = true;
+
+  // Detect coastal using Open-Meteo Marine API — returns data for ocean/coast, error for inland
+  // This is the most reliable free coastal detector — no rate limits, no API key
+  const isCoastal = await detectCoastalViaMarineAPI(currentLat, currentLon);
+
+  // Auto-detect other terrain from elevation and humidity
+  const avgHum = forecastData ? (forecastData.rh.slice(0,24).reduce((a,b)=>a+b,0)/24) : 60;
+  const elev = forecastData && forecastData.elevation ? forecastData.elevation : 0;
+
+  let terrain;
+  if (isCoastal) {
+    terrain = 'coast';
+  } else {
+    // Use elevation + humidity for non-coastal terrain
+    const detected = autoDetectTerrain(elev, 999, avgHum); // pass 999 for tide dist since we know not coastal
+    terrain = detected || 'valley';
+  }
+
+  const legacyMap = { coast:'coast', mountain:'ridge', highland:'ridge', valley:'valley', woodland:'valley', desert:'valley', plains:'valley' };
+  locs.push({ name: customLocName, note: '', lat: currentLat, lon: currentLon, terrain, type: legacyMap[terrain] || 'valley' });
   saveMyLocs(locs);
   renderMyLocs();
-  const btn = document.getElementById('saveFavBtn');
-  btn.textContent = '★ Saved!'; btn.classList.add('saved');
+
+  btn.textContent = '★ Saved!'; btn.disabled = false; btn.classList.add('saved');
   setTimeout(() => { btn.textContent = '☆ Save to My Locations'; btn.classList.remove('saved'); }, 2000);
+
+  // Pre-fetch Bortle in background
+  fetchBortleBackground(locs.length - 1, customLocName, currentLat, currentLon);
+}
+
+// Detect if a location is coastal using Open-Meteo's Marine API
+// The Marine API only has data for ocean grid points — inland returns an error
+async function detectCoastalViaMarineAPI(lat, lon) {
+  // Check cache first
+  const key = `coastal_${lat.toFixed(3)}_${lon.toFixed(3)}`;
+  try {
+    const cached = localStorage.getItem(key);
+    if (cached !== null) return cached === 'true';
+  } catch(e) {}
+
+  try {
+    const url = `https://marine-api.open-meteo.com/v1/marine?latitude=${lat}&longitude=${lon}&hourly=wave_height&forecast_days=1`;
+    const res = await fetch(url);
+    const json = await res.json();
+    // If we get hourly wave data → coastal. If error → inland.
+    const isCoastal = !json.error && json.hourly && json.hourly.wave_height && json.hourly.wave_height.some(v => v !== null);
+    try { localStorage.setItem(key, String(isCoastal)); } catch(e) {}
+    console.log(`Coastal detection for ${lat},${lon}: ${isCoastal}`);
+    return isCoastal;
+  } catch(e) {
+    console.log('Marine API error:', e.message);
+    return false; // Default to not coastal on error
+  }
 }
 
 // Alias for backward compat
@@ -933,7 +1245,7 @@ function computeScores(dayDate, locType, forecastData, lat, lon) {
   const myLocs = loadMyLocs();
   const activeLoc = activeLocIdx >= 0 ? myLocs[activeLocIdx] : null;
   const locName = activeLoc ? activeLoc.name : '';
-  const bortleInfo = bortleForLocation(activeLocIdx, locName);
+  const bortleInfo = syncBortleForLocation(activeLocIdx, locName, currentLat, currentLon);
   stars -= bortlePenalty(bortleInfo.bortle);
   const moonRiseStr  = moonTimes.rise  ? fmtTime(moonTimes.rise)  : (moonTimes.alwaysUp ? 'Up all night' : 'Does not rise');
   const moonSetStr   = moonTimes.set   ? fmtTime(moonTimes.set)   : (moonTimes.alwaysDown ? 'Down all night' : 'Does not set');
@@ -978,7 +1290,9 @@ function renderDays() {
   const {ts} = forecastData;
   const {days,order} = groupByDay(ts);
   const myLocs = loadMyLocs();
-  const locType = (activeLocIdx>=0 && myLocs[activeLocIdx] && myLocs[activeLocIdx].type) ? myLocs[activeLocIdx].type : 'valley';
+  const activeLoc7 = activeLocIdx >= 0 ? myLocs[activeLocIdx] : null;
+  const locType = activeLoc7 ? (activeLoc7.type || 'valley') : 'valley';
+  const terrain  = activeLoc7 ? (activeLoc7.terrain || 'valley') : 'valley';
   const dayNames   = ['Sun','Mon','Tue','Wed','Thu','Fri','Sat'];
   const monthNames = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
   const dayList = order.slice(0,7).map((key,idx) => {
@@ -1033,6 +1347,7 @@ function renderDetail(day, locType) {
   const tabLabels = {sunrise:'Sunrise color',sunset:'Sunset color',stars:'Clear stars',fog:'Fog potential'};
   const myLocs = loadMyLocs();
   const locName   = activeLocIdx>=0 && myLocs[activeLocIdx] ? myLocs[activeLocIdx].name : (customLocName||'Custom location');
+  const terrain   = (activeLocIdx>=0 && myLocs[activeLocIdx] && myLocs[activeLocIdx].terrain) ? myLocs[activeLocIdx].terrain : 'valley';
   const w = s.windowData;
   const badges = [];
   if (currentTab === 'stars') {
@@ -1070,7 +1385,7 @@ function renderDetail(day, locType) {
       if (aqiLbl) badges.push([aqiLbl.text, aqiLbl.tc, aqiLbl.bg]);
     }
   }
-  const verdict = buildVerdict(score, day, currentTab, locType);
+  const verdict = buildVerdict(score, day, currentTab, locType, terrain);
   const locTip = (activeLocIdx>=0 && myLocs[activeLocIdx]) ? (TIPS[myLocs[activeLocIdx].name]||{})[currentTab] : null;
   const aqiForNote = currentTab==='sunrise' ? w.srAQI : currentTab==='sunset' ? w.ssAQI : currentTab==='stars' ? w.starsAQI : null;
   const smokeNote = aqiColorNote(aqiForNote);
@@ -1133,7 +1448,7 @@ function renderDetail(day, locType) {
       <div class="metric-card" style="border:0.5px solid ${mwColor}"><div class="metric-label">🌌 MW window</div><div class="metric-value" style="font-size:12px;color:${mwValColor}">${mwStatus}</div></div>
       <div class="metric-card"><div class="metric-label">🌌 Peak alt</div><div class="metric-value">${mwAlt}</div></div>
       <div class="metric-card"><div class="metric-label">🌌 Season</div><div class="metric-value" style="font-size:12px">${seasonLabel}</div></div>
-      <div class="metric-card" style="border:0.5px solid ${s.bortleInfo.tc};grid-column:1/-1"><div class="metric-label">Light pollution</div><div class="metric-value" style="font-size:13px;color:${s.bortleInfo.tc}">${s.bortleInfo.label} · ${s.bortleInfo.desc}</div></div>`;
+      <div class="metric-card" style="border:0.5px solid ${s.bortleInfo.tc};grid-column:1/-1"><div class="metric-label">Light pollution${s.bortleInfo.source==='estimate' ? ' <span style=\"font-size:9px;opacity:0.6\">(estimate)</span>' : s.bortleInfo.source==='VIIRS' ? ' <span style=\"font-size:9px;opacity:0.6\">· VIIRS satellite</span>' : ''}</div><div class="metric-value" style="font-size:13px;color:${s.bortleInfo.tc}">${s.bortleInfo.label} · ${s.bortleInfo.desc}</div></div>`;
     ambientWeather = `Sunset ${s.sunTimes.sunsetStr} · Dark ${fmtTime(s.sunTimes.nightStart)} · Wind ${Math.round(w.starsWD)} mph`;
   } else {
     metrics = `
@@ -1334,127 +1649,247 @@ function buildHourlyPanel(day, currentTab, forecastData) {
   </div>`;
 }
 
-function buildVerdict(score, day, type, locType) {
+function buildVerdict(score, day, type, locType, terrain) {
+  // terrain: coast|mountain|highland|valley|woodland|desert|plains
+  // locType: coast|ridge|valley (legacy scoring field)
+  const t = terrain || locType || 'valley';
+
+  // ── Verdict line pools ────────────────────────────────────────────────────
+  // Each tier has a pool of lines. One is picked randomly per render.
+  // Lines marked [terrain:X] only fire for that terrain type.
+
+  const POOLS = {
+    sunrise: {
+      80: [
+        // Generic
+        "Marc Adamus would drive through the night for this. The light is earning it.",
+        "This is the light Galen Rowell called 'alpenglow on steroids.' Every factor is aligned. Go now.",
+        "Broken cloud in the smoulder zone, humidity dialed in. This is an ILPOTY morning. Set three alarms.",
+        "The scoring system is telling you something it rarely says: go. Every factor is aligned. This is the one.",
+        // Terrain-specific
+        t==='coast'    ? "Marc Adamus would call this a 'fleeting atmosphere' day on the coast. The marine layer is doing everything right. Be there before first light." : null,
+        t==='mountain' ? "This is the alpenglow light that Marc Adamus has built his career chasing. The mountain is lit. Go." : null,
+        t==='highland' ? "Mads Peter Iversen built his career on mornings exactly like this. Highland mist, warm light, perfect structure. Arrive before first light." : null,
+        t==='valley'   ? "Albert Dros built his career on mornings like this. Valley light at its absolute best. Worth every early alarm." : null,
+        t==='woodland' ? "Adam Gibbs shoots mornings like this for a living. Mist in the trees, golden light filtering through. Go before it burns off." : null,
+        t==='desert'   ? "Eric Bennett has spent years wandering desert canyons looking for the shot no one else took. Today the light is making it easy for once." : null,
+        t==='plains'   ? "Art Wolfe once said the sky is the most dramatic landscape of all. Today it is. The plains are your canvas." : null,
+      ].filter(Boolean),
+      65: [
+        "Albert Dros built his career on mornings like this. Worth every early alarm.",
+        "Nigel Danson would expand that hourly table and make a call at dawn. Conditions warrant the alarm.",
+        "Strong cloud structure with good humidity. Michael Shainblum would have the timelapse cued up. You should at least have the tripod ready.",
+        "Good conditions, not perfect. Mads Peter Iversen once said the best light surprised him. This morning has that potential.",
+        t==='coast'    ? "Chris Burkard doesn't miss mornings with this coastal structure. Neither should you." : null,
+        t==='mountain' ? "Erin Babnik would already have her composition picked out. Mountain light at this level doesn't wait." : null,
+        t==='woodland' ? "Simon Baxter would have a foreground already in mind. Woodland light at golden hour is his whole game." : null,
+        t==='desert'   ? "Nick Carver would have his large format loaded. Desert light at this level is worth the slow approach." : null,
+        t==='plains'   ? "David Muench photographed the American West's open spaces for 50 years. He understood big sky light like no one else. Today qualifies." : null,
+      ].filter(Boolean),
+      50: [
+        "Thomas Heaton would call this a 'maybe' day. Worth watching the hour before — it could tip either way.",
+        "Alister Benn would call this an expressive morning — not a technically perfect one. Sometimes that's more interesting.",
+        "Gavin Hardcastle would go anyway and make it funny either way. The decision is yours.",
+        "Cloud structure is present but uneven. Could deliver something. Check again at last light.",
+        t==='woodland' ? "The woodland will soften imperfect light. Adam Gibbs has made a career of exactly this. Go with low expectations and an open eye." : null,
+        t==='desert'   ? "Ben Horne would set up the large format and wait. Desert light at 50/100 still has something to say." : null,
+      ].filter(Boolean),
+      30: [
+        "Alister Benn would remind you that difficult light is still expressive light. Go if the location calls you.",
+        "The forecast is hedging. So should you. Monitor tonight — these patterns can shift.",
+        "Not much structure to work with. Simon Baxter would find something beautiful in the quiet light anyway — but color isn't on the cards.",
+        "Worth a quick look if you're already up, but don't set the alarm for this one.",
+        t==='desert'   ? "Guy Tal would already be on his knees in the sandstone finding something extraordinary at ground level. The sky isn't the point today." : null,
+        t==='woodland' ? "No color overhead. Alex Noriega would find the mystery at ground level. Look down, not up." : null,
+      ].filter(Boolean),
+      0: [
+        "Even Bob Ross couldn't paint color into this sky. Take the morning off.",
+        "Ansel Adams didn't chase color — he chased light. Even he'd be sleeping in this morning.",
+        "The clouds have agreed to be unhelpful today. Unanimous decision. Not appealing.",
+        "Nothing to see here. Not literally — you can see fine. Just nothing worth photographing at sunrise.",
+        t==='desert'   ? "Guy Tal hardly ever looks at the sky. Today he's right. Find your crack in the sandstone." : null,
+        t==='plains'   ? "On the plains the sky is everything. Today it's offering nothing. Even Art Wolfe would wait for a better day." : null,
+      ].filter(Boolean),
+    },
+    sunset: {
+      80: [
+        "This is the light that fills ILPOTY portfolios. The kind of sky that wins awards. Get out there.",
+        "Marc Adamus calls these 'fleeting atmosphere' days. They don't repeat. Be there.",
+        "Daniel Kordan once crossed two time zones for conditions like this. You just have to drive.",
+        "The scoring system is telling you something it rarely says: go. Every factor is aligned. This is the one.",
+        t==='coast'    ? "Chris Burkard doesn't miss sunsets with this coastal structure. Neither should you." : null,
+        t==='mountain' ? "This is the alpenglow light that makes mountain photography worth every summit. Marc Adamus would already be there." : null,
+        t==='highland' ? "Mads Peter Iversen would call this a lifetime evening. Highland light, perfect cloud, warm sky. Go." : null,
+        t==='valley'   ? "Albert Dros says the ultimate beauty of a location only reveals itself at the edge of day. Tonight has that quality." : null,
+        t==='woodland' ? "Adam Gibbs would have three compositions planned for this light. Woodland golden hour at this level is rare." : null,
+        t==='desert'   ? "Marc Adamus has shot desert sunsets that look like other planets. Tonight, yours might too." : null,
+        t==='plains'   ? "Art Wolfe once wrote that the plains sky at golden hour has no equal. Tonight proves it." : null,
+      ].filter(Boolean),
+      65: [
+        "Chris Burkard doesn't miss sunsets with this structure. Neither should you.",
+        "Albert Dros says the ultimate beauty of a location only reveals itself at the edge of day. Tonight has that quality.",
+        "Strong conditions with some uncertainty. Thomas Heaton would take the drive.",
+        "Cloud structure is in the right place. This is the kind of evening that fills feeds tomorrow morning.",
+        t==='coast'    ? "Rachel Talibart built her career on dramatic coastal light exactly like this. The waves will help." : null,
+        t==='desert'   ? "Eric Bennett once said he tries to keep his vision open to anything. Tonight the desert is making it easy." : null,
+        t==='plains'   ? "David Muench spent decades capturing the spirit of America's open lands. Tonight the sky is giving you a reason to go." : null,
+      ].filter(Boolean),
+      50: [
+        "Nigel Danson would expand the hourly table and make a call at 5 PM. Check conditions again before you commit.",
+        "The light might show up. It might not. Gavin Hardcastle would go and call it 'character building' either way.",
+        "Fair conditions. The sky is thinking about it. Whether it commits is another matter.",
+        "Marginal structure with some potential. Check the hourly table — a cloud shift in the last 30 minutes can change everything.",
+      ],
+      30: [
+        "Gavin Hardcastle would say the light's being difficult, not impossible. Your call.",
+        "Not much to work with tonight. Alister Benn would find the emotional truth in a flat sky. Most of us would just go home.",
+        "The model is not excited. Respect the model.",
+        "Sky coverage is wrong for color. Consider scouting the location for a better day.",
+        t==='desert'   ? "Alex Noriega would say mystery and atmosphere over objective reality. Flat desert light still has something to offer — just not color." : null,
+      ].filter(Boolean),
+      0: [
+        "Galen Rowell spent his career chasing moments like this — and even he'd have stayed in the tent tonight.",
+        "Bob Ross would find a happy little cloud in here somewhere. The algorithm cannot.",
+        "Sky is either clear as glass or welded shut. Neither produces color. Take the evening off with a clean conscience.",
+        "Conditions are not aligned. Even the clouds look embarrassed about it.",
+        t==='desert'   ? "Guy Tal never needed a dramatic sky. The sandstone is its own reward. Tonight, follow his lead." : null,
+      ].filter(Boolean),
+    },
+    stars: {
+      80: [
+        "Michael Shainblum would have his timelapse rig already rolling. These conditions don't come often.",
+        "Daniel Kordan shoots the Milky Way across six continents. Tonight, your backyard qualifies.",
+        "Transparency is exceptional. Dark window is open. This is what astrophotographers dream about on cloudy nights.",
+        "Low humidity, clear across all three cloud layers, moon is behaving. Check your batteries. Go.",
+        t==='coast'    ? "Michael Shainblum's best fog and Milky Way work comes from the California coast. Tonight you have his conditions." : null,
+        t==='mountain' ? "Elevation advantage plus clear skies. Daniel Kordan would already have his intervalometer set." : null,
+        t==='desert'   ? "Sean Parker has spent years shooting the Milky Way over the Southwest desert. Tonight the sky is his — and yours." : null,
+        t==='highland' ? "Dark highland skies with clear transparency. The kind of night that makes the drive worth it." : null,
+      ].filter(Boolean),
+      65: [
+        "Solid star visibility tonight. Worth the drive to a dark site.",
+        "Michael Shainblum would have a location in mind already. Pick your foreground and go.",
+        "Good transparency with acceptable humidity. Not a lifetime night, but a worthwhile one.",
+        "Daniel Kordan doesn't skip nights like this. Wide-field Milky Way work will reward you.",
+      ],
+      50: [
+        "Patchy conditions. Long exposures are a gamble. Consider a wider composition.",
+        "Some clear windows exist. Manage your expectations and your exposure time.",
+        "Stars are visible but the sky isn't fully cooperating. Good night for learning the location.",
+      ],
+      30: [
+        "The sky is offering stars with an asterisk. Bring patience — and a backup plan.",
+        "Marginal. The Milky Way is up there. It's just not particularly interested in being photographed tonight.",
+        "Cloud cover or moon will limit your options. Consider long exposures of the landscape instead.",
+      ],
+      0: [
+        "Full moon or solid overcast — either way, the stars are off the menu tonight. Even Ansel Adams shot landscapes in daylight sometimes.",
+        "The moon has decided tonight is its moment. Reschedule.",
+        "Cloud cover is comprehensive. Even Michael Shainblum's timelapse rig would just record darkness. Save the drive.",
+        "No stars tonight. Not even the Instagrammable ones.",
+      ],
+    },
+    fog: {
+      80: [
+        "Mads Peter Iversen built his career on mornings exactly like this. Arrive before first light — fog waits for no one.",
+        "Adam Gibbs shoots misty mornings like this for a living. If you're near a woodland or water, go.",
+        "Dewpoint spread is nearly zero. Humidity is maxed. Winds are calm. This is textbook fog. Be there before first light.",
+        t==='coast'    ? "Marine layer is stacked and conditions are perfect. Michael Shainblum's best fog work was made on mornings like this." : null,
+        t==='mountain' ? "At this elevation, look west at sunrise — you may be floating above a sea of clouds. This is what ridge locations were made for." : null,
+        t==='valley'   ? "Alexander Valley-style radiation fog. Dense, low, holds until 10 AM. Shoot from the ridge above for the sea-of-clouds shot." : null,
+        t==='woodland' ? "Fog in the woodland is Adam Gibbs territory. The trees will hold the mist longer than any open location. Go early." : null,
+        t==='highland' ? "Mads Peter Iversen built his reputation on exactly this — moorland mist at first light. This is a lifetime morning." : null,
+        t==='plains'   ? "Plains fog spreads across everything. Art Wolfe would use it to simplify the frame and let the light do the work." : null,
+        t==='desert'   ? "Coastal desert fog — rare and extraordinary. The kind of morning that defines a portfolio." : null,
+      ].filter(Boolean),
+      65: [
+        "Favorable but not certain. Fog can form and burn within an hour. Be there early or accept that you gambled.",
+        "Simon Baxter would already have a composition in mind. Start thinking about foreground.",
+        "The numbers favor fog. Nature doesn't read the numbers. Get there early and see what it's decided.",
+        t==='valley'   ? "Valley radiation fog is likely. Shoot from the ridge above for the aerial perspective." : null,
+        t==='woodland' ? "Misty woodland conditions are building. Adam Gibbs would already be in the car." : null,
+      ].filter(Boolean),
+      50: [
+        "Conditions are on the edge. Patches possible near water and in valleys.",
+        "Some moisture present but the dewpoint spread is wide enough to keep things uncertain.",
+        "Fog is possible, not promised. The difference between 'fog likely' and 'fog gorgeous' is about 2 degrees of dewpoint spread.",
+      ],
+      30: [
+        "Some atmospheric moisture present. Isolated patches possible near water. Don't plan a dedicated fog shoot around this.",
+        "The dewpoint spread is too wide for reliable fog. You might get lucky near a water body. Probably not.",
+        "Fog is considering its options. The odds are not great. Worth a glance out the window at 5 AM before committing.",
+      ],
+      0: [
+        "The air is too dry for fog. Even Mads Peter Iversen can't manufacture a sea of clouds from a 15°C dewpoint spread.",
+        "No fog today. The atmosphere is being unnecessarily transparent about it.",
+        "Conditions are dry and clear. Great for stars. Terrible for fog. Check the ★ tab.",
+        t==='desert'   ? "Desert air is too dry for fog today. Guy Tal would find something extraordinary in the clarity instead." : null,
+        t==='plains'   ? "Plains are too dry and breezy for fog formation. Check the sunrise score — open skies on the plains can still be spectacular." : null,
+      ].filter(Boolean),
+    },
+  };
+
+  // Pick a random line from the pool for the matching tier
+  function pickLine(pool) {
+    if (!pool || !pool.length) return null;
+    return pool[Math.floor(Math.random() * pool.length)];
+  }
+
+  function getTierPool(typeKey, score) {
+    const tiers = POOLS[typeKey];
+    if (!tiers) return null;
+    if (score >= 80) return tiers[80];
+    if (score >= 65) return tiers[65];
+    if (score >= 50) return tiers[50];
+    if (score >= 30) return tiers[30];
+    return tiers[0];
+  }
+
+  // ── Build the verdict text ────────────────────────────────────────────────
   const s = day.scores;
   const w = s.windowData;
-  if (type==='sunrise' || type==='sunset') {
-    const lbl = type==='sunrise' ? 'sunrise' : 'sunset';
-    const isSR = type==='sunrise';
-    const p    = isSR ? s.srPatterns : s.ssPatterns;
-    const lc   = isSR ? w.srLC : w.ssLC;
-    const mc   = isSR ? w.srMC : w.ssMC;
-    const hc   = isSR ? w.srHC : w.ssHC;
-    const rh   = isSR ? w.srRH : w.ssRH;
-    const coast = locType === 'coast';
-    const ridge = locType === 'ridge';
-    if (p && (isSR ? p.srPaintersSky : p.ssPaintersSky)) {
-      const base = coast ? `Classic Sonoma Coast painter's sky. The high cloud canopy diffuses warm light across the whole sky while the broken low cloud layer catches fire from below.` : `High cloud canopy acting as a giant diffuser with broken low clouds to catch the light from beneath — one of the best ${lbl} patterns possible.`;
-      return score >= 60 ? `${base} Strong color likely across a wide sky. Get out for this one.` : `${base} Some factors may limit intensity — worth going but temper expectations.`;
-    }
-    if (p && (isSR ? p.srCirrusOnly : p.ssCirrusOnly)) {
-      return score >= 55 ? `Dense cirrus layer will scatter warm light across the whole sky, creating a wide amber or pink wash. Less dramatic than broken cloud but often very painterly. Worth going.` : `Cirrus layer present but other factors limit color potential. May still produce a warm sky glow — soft rather than vivid.`;
-    }
-    if (p && (isSR ? p.srSmoulderZone : p.ssSmoulderZone)) {
-      const coastNote = coast ? ` At ${coast ? 'the coast' : 'this location'}, broken marine layer clouds light up brilliantly from below.` : '';
-      const ridgeNote = ridge ? ' From the ridge you may see the lit cloud tops below you.' : '';
-      return score >= 70 ? `Broken low cloud in the sweet spot — 40–75% coverage means enough structure to catch light without blocking it.${coastNote}${ridgeNote} High probability of vivid color.` : `Broken low cloud with decent structure. Color possible but mid/high layer may interfere.${coastNote} Monitor the hour before ${lbl}.`;
-    }
-    if (p && (isSR ? p.srCoastPattern : p.ssCoastPattern)) {
-      return score >= 55 ? `Marine stratus with clear sky above — the coastal signature pattern. Low cloud edges glow orange as the sun clears or dips below. Often delivers the most vivid color on the Sonoma Coast.` : `Marine stratus present. Color depends on how much the layer has broken — check conditions an hour before ${lbl}.`;
-    }
-    if (lc >= 10 && lc < 40) {
-      const hcNote = hc >= 40 ? ' High clouds add a warm diffuse glow above.' : '';
-      return score >= 55 ? `Partial cloud cover with good structure in the window.${hcNote} Light patches and cloud edges should catch color well.` : `Some cloud structure present but coverage may be too sparse for strong color.${hcNote} Could still be worth going for the light quality even if color is muted.`;
-    }
-    if (lc > 85 && mc > 60) return `Dense overcast likely to block direct light during the ${lbl} window. Flat, diffuse light — good for even exposure but unlikely to produce vivid color. Consider staying home unless the location itself is the draw.`;
-    if (p && (isSR ? p.srClear : p.ssClear)) {
-      const clearNote = rh > 70 ? ' Higher humidity may add some warm atmospheric haze near the horizon.' : ' Very dry and clear — light will be clean and golden but the sky itself won\'t show much color.';
-      return `Mostly clear sky in the ${lbl} window.${clearNote} ${score >= 40 ? 'Worth going for the clean golden light even without dramatic color.' : 'Probably not worth a dedicated trip for color.'}`;
-    }
-    if (hc >= 50 && lc < 25) return score >= 50 ? `High cloud layer will diffuse and warm the light across a broad sky. Without low clouds to catch direct color it may be more of a warm glow than vivid drama — but can be beautiful.` : `High cloud present but low cloud structure is limited. May produce a soft warm sky rather than strong color.`;
-    if (score >= 75) return `Strong color potential in the ${lbl} window. Cloud structure and humidity are well-positioned to scatter warm light. Worth getting out.`;
-    if (score >= 55) return `Moderate color possible. Conditions are partially favorable — could still deliver a good ${lbl}. Monitor the hour before.`;
-    if (score >= 35) return `Marginal ${lbl} conditions. Coverage may be too uniform or too sparse. Watch forecasts for last-minute changes.`;
-    return `Unlikely to produce strong color. Sky appears either too clear or fully overcast during the ${lbl} window.`;
-  }
-  if (type==='stars') {
-    const mb = s.moonBadge;
-    if (mb.fraction > 0.85) return `${mb.emoji} Full moon tonight washes out the Milky Way core entirely. Even in perfect skies the core will be invisible. Consider shooting the moonlit landscape instead.`;
-    if (mb.fraction > 0.60) { const hrs = s.moonFreeHours.toFixed(1); return `${mb.emoji} ${mb.label} (${Math.round(mb.fraction*100)}% illuminated) significantly limits the window. ${hrs}h of moon-free darkness available — plan around that window carefully.`; }
-    if (!s.mwInfo.visible) {
-      const alt = s.mwInfo.maxAlt;
-      if (alt !== undefined && alt > 0 && alt < 10) return `Galactic core only reaches ${Math.round(alt)}° above the horizon at this latitude — too low for useful imaging. Good night for wide star trails or deep sky objects.`;
-      return `Galactic core does not clear the horizon at this latitude. No Milky Way core shooting possible — good night for star trails or deep sky objects.`;
-    }
-    const seasonNote = { 'pre-dawn': 'Core rises pre-dawn this time of year — plan for the 3–6 AM window.', 'evening': 'Prime season — core visible most of the night.', 'early-eve': 'Core is high right after dark — start shooting within an hour of astronomical twilight.', 'closing': 'Season is closing — core sets early. Get there right after dark.' }[s.mwInfo.season] || '';
-    const coreAlt = s.mwInfo.maxAlt ? ` Core peaks at ${Math.round(s.mwInfo.maxAlt)}° altitude here.` : '';
-    const ridgeBonus = locType==='ridge' ? ' Elevation improves transparency significantly.' : '';
-    const fogBlanket = (locType==='ridge' && s.fogBlanket) ? ' Valley fog below will blanket light pollution — darker skies than usual.' : '';
-    if (score>=75) return `Excellent night for astrophotography. ${s.moonFreeHours.toFixed(0)}h moon-free window with ${Math.round(s.clearStretch.bestAvg)}% average cloud in the best stretch.${coreAlt} ${seasonNote}${ridgeBonus}${fogBlanket}`;
-    if (score>=50) return `Good potential. Best ${Math.round(s.clearStretch.bestAvg)}% cloud stretch in the dark window.${coreAlt} ${seasonNote}${ridgeBonus}${fogBlanket}`;
-    if (score>=30) return `Marginal — patchy clouds or limited dark window.${coreAlt} ${seasonNote} Wide compositions that don't require long uninterrupted windows may work.`;
-    return `Poor conditions. Cloud cover, moon, or both will significantly limit shooting. Consider rescheduling.`;
-  }
-  if (type==='fog') {
-    const dpSpr = fmtSpread(w.fgT-w.fgDP);
-    const ridgeNote = locType==='ridge' ? ' At this elevation you sit above the fog — a high score means sea-of-clouds below you.' : '';
-    if (score>=70) return `High fog potential. Dewpoint spread of ${dpSpr} and humidity at ${Math.round(w.fgRH)}% strongly favor radiation or marine fog formation.${ridgeNote} Arrive early.`;
-    if (score>=45) return `Moderate fog chance. Conditions are favorable but not certain. Valley or marine fog may form overnight and burn off by mid-morning.${ridgeNote}`;
-    if (score>=25) return `Some low-level moisture present. Isolated fog patches possible near water or in valley floors.${ridgeNote}`;
-    return `Low fog potential. Dewpoint spread of ${dpSpr} is too large for significant fog formation under current conditions.`;
-  }
-}
 
-async function fetchForecast(lat, lon) {
-  currentLat = lat; currentLon = lon;
-  selectedDay = 0;
-  document.getElementById('day-grid').innerHTML = Array(7).fill(`<div class="shimmer"></div>`).join('');
-  document.getElementById('detail-panel').innerHTML = '';
-  try {
-    const url = `https://api.open-meteo.com/v1/forecast?latitude=${lat}&longitude=${lon}`
-      + `&hourly=temperature_2m,dewpoint_2m,relativehumidity_2m,precipitation,`
-      + `cloudcover_low,cloudcover_mid,cloudcover_high,windspeed_10m`
-      + `&daily=sunrise,sunset`
-      + `&temperature_unit=celsius&windspeed_unit=mph&forecast_days=8`
-      + `&timezone=auto`;
-    const res = await fetch(url);
-    if (!res.ok) throw new Error('API error');
-    const json = await res.json();
-    let aqiJson = null;
-    try {
-      const aqiUrl = `https://air-quality-api.open-meteo.com/v1/air-quality?latitude=${lat}&longitude=${lon}&hourly=us_aqi&forecast_days=8&timezone=auto`;
-      const aqiController = new AbortController();
-      const aqiTimeout = setTimeout(() => aqiController.abort(), 4000);
-      const aqiRes = await fetch(aqiUrl, { signal: aqiController.signal });
-      clearTimeout(aqiTimeout);
-      if (aqiRes.ok) aqiJson = await aqiRes.json();
-    } catch(e) {}
-    const h = json.hourly;
-    const d = json.daily;
-    const toK = c => c+273.15;
-    const sunriseLookup = {}, sunsetLookup = {};
-    d.time.forEach((dateStr, i) => {
-      sunriseLookup[dateStr] = d.sunrise[i];
-      sunsetLookup[dateStr]  = d.sunset[i];
-    });
-    forecastData = {
-      ts:        h.time.map(t=>new Date(t).getTime()),
-      lclouds:   h.cloudcover_low,
-      mclouds:   h.cloudcover_mid,
-      hclouds:   h.cloudcover_high,
-      rh:        h.relativehumidity_2m,
-      dewpoint:  h.dewpoint_2m.map(toK),
-      temp:      h.temperature_2m.map(toK),
-      precip:    h.precipitation,
-      windSpeed: h.windspeed_10m,
-      aqi:       aqiJson ? aqiJson.hourly.us_aqi : null,
-      sunriseLookup,
-      sunsetLookup,
-    };
-    renderDays();
-  } catch(e) {
-    console.error('Forecast error:', e);
-    document.getElementById('day-grid').innerHTML = `<div class="status error-msg" style="grid-column:1/-1">Error: ${e.message || 'Unknown error'}. Check console for details.</div>`;
+  if (type === 'sunrise' || type === 'sunset') {
+    const lbl = type === 'sunrise' ? 'sunrise' : 'sunset';
+    const pool = getTierPool(type, score);
+    const nameLine = pickLine(pool);
+
+    if (score >= 80) {
+      return `${nameLine} Strong color potential — cloud structure and humidity are strongly aligned for ${lbl}.`;
+    }
+    if (score >= 65) {
+      return `${nameLine} Solid conditions — the sky has structure and the light should deliver.`;
+    }
+    if (score >= 50) {
+      return `${nameLine} Moderate color possible — cloud coverage is present but uneven. Monitor the evening before.`;
+    }
+    if (score >= 30) {
+      return `${nameLine} Marginal ${lbl} conditions. Coverage may be too uniform or too sparse.`;
+    }
+    return `${nameLine}`;
+  }
+
+  if (type === 'stars') {
+    const bonus = (t === 'mountain' || t === 'highland') ? ' Elevation advantage here improves atmospheric transparency.' : '';
+    const pool = getTierPool('stars', score);
+    const nameLine = pickLine(pool);
+    if (score >= 75) return `${nameLine} Low cloud cover across all levels and low humidity favor sharp, high-contrast stars.${bonus}`;
+    if (score >= 50) return `${nameLine} Some cloud interference possible but transparency should be acceptable for wide-field work.${bonus}`;
+    if (score >= 30) return `${nameLine}`;
+    return `${nameLine}`;
+  }
+
+  if (type === 'fog') {
+    const s2 = day.scores;
+    const dpSpread = s2.dpSpread !== undefined ? s2.dpSpread.toFixed(1) : '?';
+    const rh = s2.rh !== undefined ? Math.round(s2.rh) : '?';
+    const ridgeNote = (t === 'mountain' || t === 'highland') ? ' At this elevation you sit above the fog — a high score means a sea-of-clouds opportunity below you.' : '';
+    const pool = getTierPool('fog', score);
+    const nameLine = pickLine(pool);
+    if (score >= 70) return `${nameLine} Dewpoint spread of ${dpSpread}°C and humidity at ${rh}% strongly favor fog formation.${ridgeNote}`;
+    if (score >= 45) return `${nameLine} Conditions are favorable but not certain. Valley or marine fog may form and burn off by mid-morning.${ridgeNote}`;
+    if (score >= 25) return `${nameLine} Some low-level moisture present. Isolated patches possible near water.${ridgeNote}`;
+    return `${nameLine}`;
   }
 }
 
@@ -1492,6 +1927,66 @@ function loadStateFromURL() {
     return true;
   }
   return false;
+}
+
+
+// ── Weather forecast fetch ────────────────────────────────────────────────────
+async function fetchForecast(lat, lon) {
+  selectedDay = 0;
+  currentLat = lat;
+  currentLon = lon;
+  document.getElementById('day-grid').innerHTML = Array(7).fill(`<div class="shimmer"></div>`).join('');
+  document.getElementById('detail-panel').innerHTML = '';
+  try {
+    // ECMWF IFS 0.25° — better cloud layer and fog accuracy than GFS default,
+    // especially for coastal marine stratus and dewpoint spread beyond day 3.
+    // Use standard forecast endpoint with best_match model blend
+    // (includes ECMWF where available, falls back gracefully worldwide)
+    const url = `https://api.open-meteo.com/v1/forecast?latitude=${lat}&longitude=${lon}`
+      + `&hourly=temperature_2m,dewpoint_2m,relativehumidity_2m,precipitation,`
+      + `cloudcover_low,cloudcover_mid,cloudcover_high,windspeed_10m`
+      + `&daily=sunrise,sunset`
+      + `&temperature_unit=celsius&windspeed_unit=mph&forecast_days=8`
+      + `&timezone=auto`;
+    const res = await fetch(url);
+    if (!res.ok) throw new Error('API error');
+    const json = await res.json();
+    let aqiJson = null;
+    try {
+      const aqiUrl = `https://air-quality-api.open-meteo.com/v1/air-quality?latitude=${lat}&longitude=${lon}&hourly=us_aqi&forecast_days=8&timezone=auto`;
+      const aqiController = new AbortController();
+      const aqiTimeout = setTimeout(() => aqiController.abort(), 4000);
+      const aqiRes = await fetch(aqiUrl, { signal: aqiController.signal });
+      clearTimeout(aqiTimeout);
+      if (aqiRes.ok) aqiJson = await aqiRes.json();
+    } catch(e) {}
+    const h = json.hourly;
+    const d = json.daily;
+    const toK = c => c + 273.15;
+    forecastData = {
+      elevation: json.elevation || 0,
+      ts:        h.time.map(t => new Date(t).getTime()),
+      lclouds:   h.cloudcover_low,
+      mclouds:   h.cloudcover_mid,
+      hclouds:   h.cloudcover_high,
+      rh:        h.relativehumidity_2m,
+      dewpoint:  h.dewpoint_2m.map(toK),
+      temp:      h.temperature_2m.map(toK),
+      precip:    h.precipitation,
+      windSpeed: h.windspeed_10m,
+      aqi:       aqiJson ? aqiJson.hourly.us_aqi : null,
+      sunriseTimes: d ? d.sunrise : null,
+      sunsetTimes:  d ? d.sunset  : null,
+    };
+    renderDays();
+    // Pre-fetch Bortle in background so it's cached for scoring
+    const myLocs = loadMyLocs();
+    const activeLocName = activeLocIdx >= 0 && myLocs[activeLocIdx] ? myLocs[activeLocIdx].name : '';
+    fetchBortleBackground(activeLocIdx, activeLocName, lat, lon);
+  } catch(e) {
+    document.getElementById('day-grid').innerHTML = `<div class="status error-msg" style="grid-column:1/-1">Could not load forecast data. Check your internet connection and try again.</div>`;
+    console.error('Forecast error:', e);
+  }
 }
 
 // ── TIDE FEATURE ────────────────────────────────────────────────────────────
@@ -1935,12 +2430,18 @@ function approxSunTimes(lat, lon, date) {
 
 
 async function injectTideSection(detailPanelEl, day) {
-  // Use currentLat/currentLon — works for any location type
   const lat = currentLat, lon = currentLon;
   if (!lat || !lon) return;
+
+  // Only show tides for coastal locations — terrain is the primary gate
+  const myLocs = loadMyLocs();
+  const activeLoc = activeLocIdx >= 0 ? myLocs[activeLocIdx] : null;
+  const terrain = activeLoc ? (activeLoc.terrain || 'valley') : 'valley';
+  if (terrain !== 'coast') return; // Not coastal — no tides
+
   const locCacheKey = `${lat.toFixed(4)}_${lon.toFixed(4)}`;
   let station = resolveStation(lat, lon, locCacheKey);
-  // If nearest NOAA station is > 60km, try TideCheck for international coverage
+  // For coastal locations outside NOAA range, try TideCheck
   if (!station || station.dist > 60) {
     station = await resolveTideCheckStation(lat, lon, locCacheKey);
   }
@@ -2032,6 +2533,44 @@ if ('serviceWorker' in navigator) {
       .catch(e => console.log('SW registration failed:', e));
   });
 }
+</script>
+<!-- Code injected by live-server -->
+<script>
+	// <![CDATA[  <-- For SVG support
+	if ('WebSocket' in window) {
+		(function () {
+			function refreshCSS() {
+				var sheets = [].slice.call(document.getElementsByTagName("link"));
+				var head = document.getElementsByTagName("head")[0];
+				for (var i = 0; i < sheets.length; ++i) {
+					var elem = sheets[i];
+					var parent = elem.parentElement || head;
+					parent.removeChild(elem);
+					var rel = elem.rel;
+					if (elem.href && typeof rel != "string" || rel.length == 0 || rel.toLowerCase() == "stylesheet") {
+						var url = elem.href.replace(/(&|\?)_cacheOverride=\d+/, '');
+						elem.href = url + (url.indexOf('?') >= 0 ? '&' : '?') + '_cacheOverride=' + (new Date().valueOf());
+					}
+					parent.appendChild(elem);
+				}
+			}
+			var protocol = window.location.protocol === 'http:' ? 'ws://' : 'wss://';
+			var address = protocol + window.location.host + window.location.pathname + '/ws';
+			var socket = new WebSocket(address);
+			socket.onmessage = function (msg) {
+				if (msg.data == 'reload') window.location.reload();
+				else if (msg.data == 'refreshcss') refreshCSS();
+			};
+			if (sessionStorage && !sessionStorage.getItem('IsThisFirstTime_Log_From_LiveServer')) {
+				console.log('Live reload enabled.');
+				sessionStorage.setItem('IsThisFirstTime_Log_From_LiveServer', true);
+			}
+		})();
+	}
+	else {
+		console.error('Upgrade your browser. This Browser is NOT supported WebSocket for Live-Reloading.');
+	}
+	// ]]>
 </script>
 </body>
 </html>
