@@ -1953,10 +1953,10 @@ async function fetchKpForecast() {
     const res = await fetch('https://services.swpc.noaa.gov/products/noaa-planetary-k-index-forecast.json');
     if (!res.ok) throw new Error('NOAA Kp API error');
     const data = await res.json();
-    // Format: [[time_tag, kp, observed, noaa_scale], ...] with header row first
-    const converted = data.slice(1).map(row => ({
-      time_tag: row[0],
-      kp_index: parseFloat(row[1]) || 0
+    // Format: [{time_tag, kp, observed, noaa_scale}, ...] — all objects, no header
+    const converted = data.map(row => ({
+      time_tag: row.time_tag,
+      kp_index: parseFloat(row.kp) || 0
     }));
     auroraCache = converted;
     auroraCacheTime = Date.now();
@@ -1975,9 +1975,9 @@ function groupKpByDay(kpData) {
   kpData.forEach(entry => {
     let d;
     const tag = String(entry.time_tag || '').trim();
-    // Try ISO format first: "2026-05-01 03:00:00"
+    // Try ISO format: "2026-05-01T03:00:00" or "2026-05-01 03:00:00"
     if (tag.match(/^\d{4}-\d{2}-\d{2}/)) {
-      d = new Date(tag.replace(' ', 'T') + 'Z');
+      d = new Date(tag.replace(' ', 'T'));
     } else {
       // auroraforecast.space format: "May 01  00-03" (1 or 2 spaces)
       const m = tag.match(/^([A-Za-z]{3})\s+(\d{1,2})/);
