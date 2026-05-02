@@ -1957,7 +1957,7 @@ async function fetchKpForecast() {
     if (data && data.x && data.y) {
       const converted = data.x.map((label, i) => ({
         time_tag: label,
-        kp_index: data.y[i]
+        kp_index: data.y[i] ?? 0
       }));
       auroraCache = converted;
       auroraCacheTime = Date.now();
@@ -1993,20 +1993,22 @@ function groupKpByDay(kpData) {
   const monthMap = {Jan:0,Feb:1,Mar:2,Apr:3,May:4,Jun:5,Jul:6,Aug:7,Sep:8,Oct:9,Nov:10,Dec:11};
   kpData.forEach(entry => {
     let d;
-    const tag = entry.time_tag || '';
+    const tag = String(entry.time_tag || '').trim();
     // Try ISO format first: "2026-05-01 03:00:00"
     if (tag.match(/^\d{4}-\d{2}-\d{2}/)) {
       d = new Date(tag.replace(' ', 'T') + 'Z');
     } else {
-      // auroraforecast.space format: "Aug 01 00-03"
-      const m = tag.match(/^(\w{3})\s+(\d{2})/);
+      // auroraforecast.space format: "May 01  00-03" (1 or 2 spaces)
+      const m = tag.match(/^([A-Za-z]{3})\s+(\d{1,2})/);
       if (!m) return;
       const year = new Date().getFullYear();
-      d = new Date(Date.UTC(year, monthMap[m[1]] ?? 0, parseInt(m[2])));
+      const mon = monthMap[m[1]];
+      if (mon === undefined) return;
+      d = new Date(Date.UTC(year, mon, parseInt(m[2])));
     }
-    if (isNaN(d.getTime())) return;
+    if (!d || isNaN(d.getTime())) return;
     const key = `${d.getUTCFullYear()}-${d.getUTCMonth()}-${d.getUTCDate()}`;
-    const kp = parseFloat(entry.kp_index || 0);
+    const kp = parseFloat(entry.kp_index ?? 0);
     if (!days[key]) { days[key] = { date: d, kps: [], maxKp: 0 }; order.push(key); }
     days[key].kps.push(kp);
     days[key].maxKp = Math.max(days[key].maxKp, kp);
